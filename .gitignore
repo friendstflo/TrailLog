@@ -16,6 +16,7 @@ externalNativeBuild/
 *.jks
 *.keystore
 release.keystore
+app/google-services.json
 
 # Android Studio navigation editor temp files
 .navigation/
