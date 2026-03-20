@@ -74,6 +74,15 @@
             android:textStyle="bold"
             android:textColor="#FF8C00" />
     </LinearLayout>
+	<!-- Severity -->
+	<TextView
+	    android:id="@+id/tv_severity"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:textSize="16sp"
+	    android:textStyle="bold"
+	    android:textColor="#FF5722"
+	    android:layout_marginTop="4dp" />
 
     <!-- Edit and Completed buttons at bottom -->
     <LinearLayout

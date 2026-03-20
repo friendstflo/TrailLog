@@ -23,3 +23,12 @@ app/google-services.json
 
 # Gradle cache
 .gradle/caches/
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+
+# APK
+*.apk
+*.ap_

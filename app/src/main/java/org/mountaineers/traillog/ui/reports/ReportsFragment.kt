@@ -90,10 +90,15 @@ class ReportsAdapter(private val onClick: (TrailReport) -> Unit) :
         val severityTv = itemView.findViewById<android.widget.TextView>(R.id.tv_severity)
         if (report.isCleared) {
             severityTv.text = "COMPLETE"
-            severityTv.setBackgroundColor(0xFF4CAF50.toInt())
+            severityTv.setBackgroundColor(0xFF4CAF50.toInt()) // green
         } else {
             severityTv.text = report.severity.uppercase()
-            severityTv.setBackgroundColor(0xFFFF8C00.toInt())
+            severityTv.setBackgroundColor(when (report.severity.lowercase()) {
+                "low" -> 0xFFFFFF00.toInt()   // yellow
+                "medium" -> 0xFFFF9800.toInt() // orange
+                "high" -> 0xFFF44336.toInt()   // red
+                else -> 0xFFFF8C00.toInt()     // default orange
+            })
         }
 
         val iv = itemView.findViewById<android.widget.ImageView>(R.id.iv_thumbnail)

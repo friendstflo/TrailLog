@@ -9,7 +9,6 @@ import org.mountaineers.traillog.data.TrailReport
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow
-import java.io.File
 
 class CustomInfoWindow(
     mapView: MapView,
@@ -30,14 +29,14 @@ class CustomInfoWindow(
         // Date
         view.findViewById<TextView>(R.id.tv_date).text = report.timestamp.toString().take(10)
 
-        // Quantity
+        // Quantity (logs or feet)
         val qtyText = when (report.type) {
             org.mountaineers.traillog.data.ReportType.LOG -> "${report.quantity} logs"
             else -> "${report.quantity} ft"
         }
         view.findViewById<TextView>(R.id.tv_quantity).text = qtyText
 
-        // Photo (Firebase URL)
+        // Photo thumbnail (Firebase URL)
         val iv = view.findViewById<ImageView>(R.id.iv_thumbnail)
         if (report.photoPath.isNotEmpty()) {
             Glide.with(view.context)
@@ -60,14 +59,14 @@ class CustomInfoWindow(
             close()
         }
 
-        // Completed / Re-open button - correct toggle logic
+        // Completed / Re-open button
         val btnComplete = view.findViewById<Button>(R.id.btn_completed)
         if (report.isCleared) {
             btnComplete.text = "Re-open"
-            btnComplete.setBackgroundColor(0xFFFF9800.toInt()) // orange for re-open
+            btnComplete.setBackgroundColor(0xFFFF9800.toInt()) // orange for Re-open
         } else {
             btnComplete.text = "Completed"
-            btnComplete.setBackgroundColor(0xFF4CAF50.toInt()) // green for complete
+            btnComplete.setBackgroundColor(0xFF4CAF50.toInt()) // green for Completed
         }
         btnComplete.setOnClickListener {
             onToggleComplete(report)

@@ -46,7 +46,7 @@ class MapFragment : Fragment() {
     private var pendingLat = 0.0
     private var pendingLng = 0.0
     private var pendingType = ReportType.LOG
-    private var pendingSeverity = "Medium"
+    private var pendingSeverity = "Medium"   // ← Added here
     private var pendingQuantity = 0
     private var photoFile: File? = null
 
@@ -198,7 +198,7 @@ class MapFragment : Fragment() {
         var selectedType = ReportType.LOG
 
         AlertDialog.Builder(requireContext())
-            .setTitle("New Trail Problem")
+            .setTitle("New Trail Problem - Type")
             .setSingleChoiceItems(types, 0) { _, which ->
                 selectedType = when (which) {
                     0 -> ReportType.LOG
@@ -207,14 +207,30 @@ class MapFragment : Fragment() {
                     else -> ReportType.OTHER
                 }
             }
-            .setPositiveButton("Next") { _, _ ->
-                showQuantityDialog(lat, lon, selectedType)
+            .setPositiveButton("Next - Severity") { _, _ ->
+                showSeverityDialog(lat, lon, selectedType)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun showQuantityDialog(lat: Double, lon: Double, type: ReportType) {
+    private fun showSeverityDialog(lat: Double, lon: Double, type: ReportType) {
+        val severities = arrayOf("Low", "Medium", "High")
+        var selectedSeverity = "Medium"
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Severity Level")
+            .setSingleChoiceItems(severities, 1) { _, which ->
+                selectedSeverity = severities[which]
+            }
+            .setPositiveButton("Next - Quantity") { _, _ ->
+                showQuantityDialog(lat, lon, type, selectedSeverity)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showQuantityDialog(lat: Double, lon: Double, type: ReportType, severity: String) {
         val title = when (type) {
             ReportType.LOG -> "How many logs to clear"
             else -> "Linear feet to clear?"
@@ -233,6 +249,7 @@ class MapFragment : Fragment() {
                 pendingLat = lat
                 pendingLng = lon
                 pendingType = type
+                pendingSeverity = severity   // ← Store it here
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
             .setNegativeButton("Cancel", null)
