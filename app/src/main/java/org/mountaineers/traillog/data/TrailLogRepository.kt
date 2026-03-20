@@ -30,16 +30,35 @@ object TrailLogRepository {
                     Log.e("Firebase", "Listen failed: ${e.message}")
                     return@addSnapshotListener
                 }
-                val list = snapshot?.toObjects(TrailReport::class.java) ?: emptyList()
-                _reports.update { list.filter { !it.isInvalidated } }
+
+                val remoteList = snapshot?.toObjects(TrailReport::class.java) ?: emptyList()
+                val localList = _reports.value.toMutableList()
+
+                // Merge: Local isCleared state wins until server confirms
+                remoteList.forEach { remote ->
+                    val index = localList.indexOfFirst { it.id == remote.id }
+                    if (index != -1) {
+                        val local = localList[index]
+                        // Use remote data unless local isCleared is different (local wins)
+                        val merged = if (local.isCleared != remote.isCleared) local else remote
+                        localList[index] = merged
+                    } else {
+                        localList.add(remote)
+                    }
+                }
+
+                // Remove any local pins deleted by other crew
+                localList.removeAll { local ->
+                    remoteList.none { it.id == local.id }
+                }
+
+                _reports.update { localList.filter { !it.isInvalidated } }
                 _lastSyncTime.value = Date()
             }
     }
 
     suspend fun addReport(report: TrailReport, photoFile: File? = null) {
-        // Optimistic local update
         _reports.update { it + report }
-
         val docRef = db.collection("reports").document(report.id)
 
         if (photoFile != null && photoFile.exists()) {
@@ -54,27 +73,20 @@ object TrailLogRepository {
     }
 
     suspend fun updateReport(report: TrailReport) {
-        // Optimistic local update
         _reports.update { current ->
             current.map { if (it.id == report.id) report else it }
         }
-
-        // Write to Firebase
         db.collection("reports").document(report.id).set(report).await()
     }
 
     suspend fun deleteReport(reportId: String) {
-        // Optimistic local delete
         _reports.update { current ->
             current.filter { it.id != reportId }
         }
-
-        // Delete from Firebase
         db.collection("reports").document(reportId).delete().await()
     }
 
     suspend fun syncAll() {
-        // Pull latest from Firebase and update local state
         val snapshot = db.collection("reports").get().await()
         val remote = snapshot.toObjects(TrailReport::class.java)
         _reports.update { remote.filter { !it.isInvalidated } }

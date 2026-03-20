@@ -4,10 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -76,7 +74,6 @@ class MapFragment : Fragment() {
                 TrailLogRepository.addReport(newReport, photoFile)
                 Toast.makeText(requireContext(), "Pin + photo synced!", Toast.LENGTH_SHORT).show()
             }
-
             refreshAllMarkers()
         } else {
             Toast.makeText(requireContext(), "Photo cancelled", Toast.LENGTH_SHORT).show()
@@ -273,7 +270,12 @@ class MapFragment : Fragment() {
         lifecycleScope.launch {
             TrailLogRepository.updateReport(updated)
         }
-        refreshAllMarkers()
+
+        // Small delay so the merge logic settles
+        view?.postDelayed({
+            refreshAllMarkers()
+        }, 250)
+
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
