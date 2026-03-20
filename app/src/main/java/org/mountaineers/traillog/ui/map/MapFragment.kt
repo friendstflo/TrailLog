@@ -46,7 +46,7 @@ class MapFragment : Fragment() {
     private var pendingLat = 0.0
     private var pendingLng = 0.0
     private var pendingType = ReportType.LOG
-    private var pendingSeverity = "Medium"   // ← Added here
+    private var pendingSeverity = "Medium"
     private var pendingQuantity = 0
     private var photoFile: File? = null
 
@@ -136,7 +136,6 @@ class MapFragment : Fragment() {
             view?.postDelayed({ refreshAllMarkers() }, 100)
         }
     }
-
     private fun addMarker(report: TrailReport, mapView: MapView) {
         val marker = Marker(mapView).apply {
             position = GeoPoint(report.lat, report.lng)
@@ -249,7 +248,7 @@ class MapFragment : Fragment() {
                 pendingLat = lat
                 pendingLng = lon
                 pendingType = type
-                pendingSeverity = severity   // ← Store it here
+                pendingSeverity = severity
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
             .setNegativeButton("Cancel", null)
@@ -269,7 +268,12 @@ class MapFragment : Fragment() {
     private fun toggleCompleted(report: TrailReport) {
         val updated = report.copy(isCleared = !report.isCleared)
         TrailLogRepository.updateReport(updated)
-        refreshAllMarkers()
+
+        // Small delay so the state fully propagates before redraw
+        view?.postDelayed({
+            refreshAllMarkers()
+        }, 150)
+
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }

@@ -76,13 +76,14 @@
     </LinearLayout>
 	<!-- Severity -->
 	<TextView
-	    android:id="@+id/tv_severity"
+ 	    android:id="@+id/tv_severity"
 	    android:layout_width="wrap_content"
-	    android:layout_height="wrap_content"
+            android:layout_height="wrap_content"
 	    android:textSize="16sp"
 	    android:textStyle="bold"
-	    android:textColor="#FF5722"
-	    android:layout_marginTop="4dp" />
+	    android:padding="6dp"
+	    android:layout_marginTop="8dp"
+	    android:textColor="#FFFFFF" />
 
     <!-- Edit and Completed buttons at bottom -->
     <LinearLayout
