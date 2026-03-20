@@ -36,49 +36,47 @@ object TrailLogRepository {
             }
     }
 
-    fun addReport(report: TrailReport, photoFile: File? = null, onComplete: () -> Unit = {}) {
+    suspend fun addReport(report: TrailReport, photoFile: File? = null) {
+        // Optimistic local update
         _reports.update { it + report }
 
         val docRef = db.collection("reports").document(report.id)
 
         if (photoFile != null && photoFile.exists()) {
             val photoRef = storage.child("photos/${report.id}.jpg")
-            photoRef.putFile(android.net.Uri.fromFile(photoFile))
-                .addOnSuccessListener {
-                    photoRef.downloadUrl.addOnSuccessListener { uri ->
-                        val reportWithUrl = report.copy(photoPath = uri.toString())
-                        docRef.set(reportWithUrl)
-                            .addOnSuccessListener { onComplete() }
-                            .addOnFailureListener { Log.e("Firebase", "Firestore write failed: ${it.message}") }
-                    }
-                }
-                .addOnFailureListener { Log.e("Firebase", "Photo upload failed: ${it.message}") }
+            photoRef.putFile(android.net.Uri.fromFile(photoFile)).await()
+            val uri = photoRef.downloadUrl.await().toString()
+            val reportWithUrl = report.copy(photoPath = uri)
+            docRef.set(reportWithUrl).await()
         } else {
-            docRef.set(report)
-                .addOnSuccessListener { onComplete() }
-                .addOnFailureListener { Log.e("Firebase", "Firestore write failed: ${it.message}") }
+            docRef.set(report).await()
         }
     }
 
-    fun updateReport(report: TrailReport) {
+    suspend fun updateReport(report: TrailReport) {
+        // Optimistic local update
         _reports.update { current ->
             current.map { if (it.id == report.id) report else it }
         }
 
-        db.collection("reports").document(report.id).set(report)
-            .addOnFailureListener { Log.e("Firebase", "Update failed: ${it.message}") }
+        // Write to Firebase
+        db.collection("reports").document(report.id).set(report).await()
     }
-    suspend fun syncAll() {
-        // Pull latest from Firebase and update local state
-        val remote = db.collection("reports").get().await().toObjects(TrailReport::class.java)
-        _reports.update { remote.filter { !it.isInvalidated } }
-    }
-    fun deleteReport(reportId: String) {
+
+    suspend fun deleteReport(reportId: String) {
+        // Optimistic local delete
         _reports.update { current ->
             current.filter { it.id != reportId }
         }
 
-        db.collection("reports").document(reportId).delete()
-            .addOnFailureListener { Log.e("Firebase", "Delete failed: ${it.message}") }
+        // Delete from Firebase
+        db.collection("reports").document(reportId).delete().await()
+    }
+
+    suspend fun syncAll() {
+        // Pull latest from Firebase and update local state
+        val snapshot = db.collection("reports").get().await()
+        val remote = snapshot.toObjects(TrailReport::class.java)
+        _reports.update { remote.filter { !it.isInvalidated } }
     }
 }

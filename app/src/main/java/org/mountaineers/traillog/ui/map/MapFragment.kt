@@ -71,9 +71,12 @@ class MapFragment : Fragment() {
                 reporter = getSavedCrewName(),
                 isCleared = false
             )
-            TrailLogRepository.addReport(newReport, photoFile) {
+
+            lifecycleScope.launch {
+                TrailLogRepository.addReport(newReport, photoFile)
                 Toast.makeText(requireContext(), "Pin + photo synced!", Toast.LENGTH_SHORT).show()
             }
+
             refreshAllMarkers()
         } else {
             Toast.makeText(requireContext(), "Photo cancelled", Toast.LENGTH_SHORT).show()
@@ -93,7 +96,6 @@ class MapFragment : Fragment() {
         setupLongPress()
         setupMyLocationButton(view)
 
-        // Live updates from Firebase
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TrailLogRepository.reports.collect {
@@ -136,6 +138,7 @@ class MapFragment : Fragment() {
             view?.postDelayed({ refreshAllMarkers() }, 100)
         }
     }
+
     private fun addMarker(report: TrailReport, mapView: MapView) {
         val marker = Marker(mapView).apply {
             position = GeoPoint(report.lat, report.lng)
@@ -267,13 +270,10 @@ class MapFragment : Fragment() {
 
     private fun toggleCompleted(report: TrailReport) {
         val updated = report.copy(isCleared = !report.isCleared)
-        TrailLogRepository.updateReport(updated)
-
-        // Small delay so the state fully propagates before redraw
-        view?.postDelayed({
-            refreshAllMarkers()
-        }, 150)
-
+        lifecycleScope.launch {
+            TrailLogRepository.updateReport(updated)
+        }
+        refreshAllMarkers()
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
@@ -293,7 +293,9 @@ class MapFragment : Fragment() {
                 val newDesc = etDesc.text.toString().trim()
                 val newQty = etQty.text.toString().toIntOrNull() ?: report.quantity
                 val updated = report.copy(description = newDesc, quantity = newQty)
-                TrailLogRepository.updateReport(updated)
+                lifecycleScope.launch {
+                    TrailLogRepository.updateReport(updated)
+                }
                 refreshAllMarkers()
                 Toast.makeText(requireContext(), "Report updated", Toast.LENGTH_SHORT).show()
             }
@@ -307,7 +309,9 @@ class MapFragment : Fragment() {
             .setMessage("This will permanently remove the pin and photo.\n\nAre you sure?")
             .setPositiveButton("Delete") { _, _ ->
                 if (report.photoPath.isNotEmpty()) File(report.photoPath).delete()
-                TrailLogRepository.deleteReport(report.id)
+                lifecycleScope.launch {
+                    TrailLogRepository.deleteReport(report.id)
+                }
                 refreshAllMarkers()
                 Toast.makeText(requireContext(), "Report deleted", Toast.LENGTH_SHORT).show()
             }
