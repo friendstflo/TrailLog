@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Crew Name -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Crew Name"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/et_crew_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter your crew name"
+        android:textSize="18sp" />
+
+    <Button
+        android:id="@+id/btn_save_crew"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Crew Name"
+        android:layout_marginTop="8dp" />
+
+    <!-- Export CSV -->
+    <Button
+        android:id="@+id/btn_export_csv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Export CSV for Landowner"
+        android:layout_marginTop="32dp" />
+    <TextView
+        android:id="@+id/tv_last_sync"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Last successful sync: Never"
+        android:textSize="14sp"
+        android:padding="16dp"
+        android:textColor="@android:color/darker_gray" />
+</LinearLayout>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1B5E20</color>
+    <color name="accent">#FF8C00</color>
+    <color name="log_orange">#FF5722</color>
+    <color name="brush_green">#4CAF50</color>
+    <color name="treadwork_blue">#2196F3</color>
+    <color name="other_gray">#607D8B</color>
+</resources>

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">TrailLog</string>
+    <string name="title_map">Map</string>
+    <string name="title_reports">Reports</string>
+    <string name="title_stats">Stats</string>
+    <string name="title_export">Export</string>
+    <string name="export_csv_landowner">Export CSV for Landowner</string>
+
+    <string-array name="report_types">
+        <item>Log</item>
+        <item>Brush</item>
+        <item>Treadwork</item>
+        <item>Other</item>
+    </string-array>
+</resources>

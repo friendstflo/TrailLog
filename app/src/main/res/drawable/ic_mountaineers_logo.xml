@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Bold mountain range -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20 175 L65 105 L95 135 L120 65 L155 120 L185 175 Z" />
+
+
+</vector>

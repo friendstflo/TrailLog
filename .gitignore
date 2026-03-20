@@ -1,0 +1,24 @@
+# Gradle
+.gradle
+build/
+local.properties
+*.iml
+.idea/
+.idea/workspace.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.DS_Store
+/captures/
+externalNativeBuild/
+.cxx/
+
+# Keystores & secrets – never commit these!
+*.jks
+*.keystore
+release.keystore
+
+# Android Studio navigation editor temp files
+.navigation/
+
+# Gradle cache
+.gradle/caches/
