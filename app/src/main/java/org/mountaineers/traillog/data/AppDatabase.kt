@@ -1,21 +1,39 @@
 package org.mountaineers.traillog.data
 
+import android.content.Context
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import androidx.room.TypeConverter
-import java.util.Date
 
-@Database(entities = [TrailReport::class], version = 1, exportSchema = false)
-@TypeConverters(DateConverter::class)
+@Database(
+    entities = [TrailReport::class],
+    version = 4,
+    exportSchema = false
+)
+@TypeConverters(
+    DateConverter::class,           // ← Add this
+    ReportTypeConverter::class      // if you already have one for ReportType
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun trailReportDao(): TrailReportDao
-}
 
-class DateConverter {
-    @TypeConverter
-    fun fromDate(date: Date?): Long? = date?.time
+    companion object {
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
 
-    @TypeConverter
-    fun toDate(value: Long?): Date? = value?.let { Date(it) }
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "traillog_database"
+                )
+                    .fallbackToDestructiveMigration()   // Forces recreation on schema change
+                    .build()
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
 }

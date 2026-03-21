@@ -42,4 +42,13 @@
         android:textSize="14sp"
         android:padding="16dp"
         android:textColor="@android:color/darker_gray" />
+    <Button
+        android:id="@+id/btn_force_sync"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Force Sync Now"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#1B5E20"
+        android:layout_marginTop="16dp"
+        android:padding="12dp" />
 </LinearLayout>

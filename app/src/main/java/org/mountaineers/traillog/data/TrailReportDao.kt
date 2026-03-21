@@ -5,9 +5,16 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TrailReportDao {
+
+    @Query("SELECT * FROM reports ORDER BY timestamp DESC")
+    fun getAll(): Flow<List<TrailReport>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(report: TrailReport)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(reports: List<TrailReport>)
@@ -15,9 +22,6 @@ interface TrailReportDao {
     @Update
     suspend fun update(report: TrailReport)
 
-    @Query("DELETE FROM TrailReport WHERE id = :reportId")
-    suspend fun delete(reportId: String)
-
-    @Query("SELECT * FROM TrailReport WHERE isInvalidated = 0 ORDER BY timestamp DESC")
-    suspend fun getAll(): List<TrailReport>
+    @Query("DELETE FROM reports WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

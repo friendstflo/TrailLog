@@ -126,13 +126,15 @@ class MapFragment : Fragment() {
     }
 
     private fun refreshAllMarkers() {
-        map?.let { m ->
-            m.overlays.clear()
-            setupLongPress()
-            TrailLogRepository.reports.value.forEach { addMarker(it, m) }
-            m.invalidate()
-        } ?: run {
-            view?.postDelayed({ refreshAllMarkers() }, 100)
+        lifecycleScope.launch {
+            TrailLogRepository.getAllReports().collect { reports ->
+                map?.let { m ->
+                    m.overlays.clear()
+                    setupLongPress()
+                    reports.forEach { addMarker(it, m) }
+                    m.invalidate()
+                }
+            }
         }
     }
 

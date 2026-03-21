@@ -50,8 +50,8 @@ class ReportsFragment : Fragment() {
         }
 
         lifecycleScope.launch {
-            TrailLogRepository.reports.collect { updatedList: List<TrailReport> ->
-                adapter.submitList(updatedList.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
+            TrailLogRepository.getAllReports().collect { reports ->
+                adapter.submitList(reports.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
             }
         }
 
