@@ -1,37 +1,32 @@
-# TrailLog
+# TrailLog v1.0 – Initial Release
 
 **Trail Maintenance Reporting App**  
-For **The Mountaineers – Everett Lookout Trail Maintenance Committee**
+Built for **The Mountaineers Everett Lookout Trail Maintenance Committee**
 
 https://www.mountaineers.org/locations-lodges/everett-branch/committees/everett-lookout-trail-maintenance-committee
 
-### Features
-- Offline pin creation with photo, type, severity, quantity (logs or feet)
-- Real-time Firebase sync (pins, photos, status updates)
-- Completed toggle (green check icon, moves to bottom of list)
-- Reports tab with thumbnails, date, quantity, severity
-- Stats dashboard with totals
-- Settings: crew name + CSV export
-- My Location button
-- Pull-to-refresh on Reports
+**Key Features**
+- Offline-first: Add pins, take photos, mark tasks complete — works fully without signal
+- Real-time Firebase sync: See every crew member's updates when back online
+- Severity selection (Low/Medium/High) with colored tags
+- Completed toggle: green check icon on map, "COMPLETE" in reports list
+- Reports tab: photo thumbnails, quantity, date, severity
+- Stats dashboard: live totals for reports, cleared, logs removed, brushing/treadwork feet
+- Settings: set crew name, CSV export for landowner reports, last sync time + count
+- My Location button + pull-to-refresh
 
-### Installation
-1. Download **TrailLog-v1.0.apk** from Releases
-2. Transfer to Android phone
-3. Tap APK → Install (allow unknown sources)
-4. Open app → grant camera/location permissions
+**Installation**
+- Download `TrailLog-v1.0.apk` from Assets below
+- Install on Android 8.0+ (allow unknown sources)
+- Grant camera & location permissions
+- Pre-cache maps: Open Map tab on WiFi, pan/zoom over Everett Lookout area
 
-Pre-cache map tiles: Open Map tab on WiFi, pan/zoom over Everett Lookout area.
+**Known Limitations**
+- Photos use local paths initially (Firebase Storage upload in progress)
+- No full offline queue yet (changes queue in Firebase persistence)
 
-### Screenshots
+**Feedback** — Bugs, suggestions, or contributions welcome via Issues.
 
-(Add images here – upload to repo and link)
+Made with ❤️ for trail safety.
 
-### Development
-- Android Studio (Flamingo or later)
-- Kotlin + Firebase + OSMdroid + Room + WorkManager
-- Clone: `git clone https://github.com/friendstflo/TrailLog.git`
-
-Feedback / bugs → Issues or contact Dan Renfrow
-
-Made with ❤️ for trail maintenance.
+Thanks to Dan Renfrow for vision and testing.
