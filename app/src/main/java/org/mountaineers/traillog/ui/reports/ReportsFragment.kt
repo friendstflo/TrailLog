@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -44,14 +46,23 @@ class ReportsFragment : Fragment() {
         }
         recyclerView.adapter = adapter
 
+        // Pull-to-refresh
         swipeRefresh.setOnRefreshListener {
             swipeRefresh.isRefreshing = false
             Toast.makeText(requireContext(), "Refreshed", Toast.LENGTH_SHORT).show()
         }
 
+        // Initial load + live updates
         lifecycleScope.launch {
-            TrailLogRepository.getAllReports().collect { reports ->
-                adapter.submitList(reports.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
+            // First load immediately
+            val initialReports = TrailLogRepository.reports.value
+            adapter.submitList(initialReports.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
+
+            // Then live collect
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TrailLogRepository.reports.collect { updatedList ->
+                    adapter.submitList(updatedList.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
+                }
             }
         }
 

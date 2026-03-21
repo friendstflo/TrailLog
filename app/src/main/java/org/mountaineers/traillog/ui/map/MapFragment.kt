@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -20,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.data.ReportType
 import org.mountaineers.traillog.data.TrailLogRepository
@@ -52,7 +54,9 @@ class MapFragment : Fragment() {
         if (granted) launchCamera() else Toast.makeText(requireContext(), "Camera permission required", Toast.LENGTH_LONG).show()
     }
 
-    private val requestLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    private val requestLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) @androidx.annotation.RequiresPermission(
+        allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION]
+    ) { granted ->
         if (granted) centerOnUserLocation() else Toast.makeText(requireContext(), "Location permission required", Toast.LENGTH_LONG).show()
     }
 
@@ -144,10 +148,28 @@ class MapFragment : Fragment() {
             snippet = report.description
             relatedObject = report
 
-            icon = if (report.isCleared) {
-                resources.getDrawable(android.R.drawable.checkbox_on_background, null)
-            } else {
-                resources.getDrawable(android.R.drawable.ic_menu_myplaces, null)
+            icon = when {
+                report.isCleared -> {
+                    resources.getDrawable(android.R.drawable.checkbox_on_background, null) // green check
+                }
+                report.severity.lowercase() == "low" -> {
+                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null).apply {
+                        setTint(0xFFFFFF00.toInt()) // yellow
+                    }
+                }
+                report.severity.lowercase() == "medium" -> {
+                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null).apply {
+                        setTint(0xFFFF9800.toInt()) // orange
+                    }
+                }
+                report.severity.lowercase() == "high" -> {
+                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null).apply {
+                        setTint(0xFFF44336.toInt()) // red
+                    }
+                }
+                else -> {
+                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null)
+                }
             }
 
             setInfoWindow(CustomInfoWindow(mapView,
@@ -183,6 +205,7 @@ class MapFragment : Fragment() {
         }
     }
 
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     private fun centerOnUserLocation() {
         try {
             val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
@@ -266,16 +289,16 @@ class MapFragment : Fragment() {
         takePhotoLauncher.launch(photoUri)
     }
 
+
+
     private fun toggleCompleted(report: TrailReport) {
         val updated = report.copy(isCleared = !report.isCleared)
-        lifecycleScope.launch {
+
+        runBlocking {
             TrailLogRepository.updateReport(updated)
         }
 
-        // Small delay so the merge logic settles
-        view?.postDelayed({
-            refreshAllMarkers()
-        }, 250)
+        refreshAllMarkers()
 
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()

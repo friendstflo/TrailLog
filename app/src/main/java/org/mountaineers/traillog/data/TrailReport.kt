@@ -19,14 +19,14 @@ data class TrailReport(
     val photoPath: String = "",
     val quantity: Int = 0,
 
-    @get:PropertyName("cleared")
+    @PropertyName("cleared")
     val isCleared: Boolean = false,
 
-    @get:PropertyName("offlineCreated")
+    @PropertyName("offlineCreated")
     val isOfflineCreated: Boolean = false,
 
-    @get:PropertyName("invalidated")
-    val isInvalidated: Boolean = false,   // ← Added
+    @PropertyName("invalidated")
+    val isInvalidated: Boolean = false,
 
     val timestamp: Date = Date(),
     val reporter: String = "Anonymous Crew"

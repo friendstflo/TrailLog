@@ -14,6 +14,7 @@ import java.util.Date
 
 object TrailLogRepository {
 
+    @Suppress("StaticFieldLeak")
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance().reference
     private lateinit var dao: TrailReportDao
@@ -31,8 +32,37 @@ object TrailLogRepository {
                     Log.e("Firebase", "Listen failed: ${e.message}")
                     return@addSnapshotListener
                 }
-                val list = snapshot?.toObjects(TrailReport::class.java) ?: emptyList()
-                _reports.update { list.filter { !it.isInvalidated } }
+
+                val remoteList = snapshot?.toObjects(TrailReport::class.java) ?: emptyList()
+                val localList = _reports.value.toMutableList()
+
+                // Merge: local isCleared ALWAYS wins
+                remoteList.forEach { remote ->
+                    val index = localList.indexOfFirst { it.id == remote.id }
+                    if (index != -1) {
+                        val local = localList[index]
+                        // Keep local isCleared, take everything else from server
+                        val merged = local.copy(
+                            description = remote.description,
+                            type = remote.type,
+                            severity = remote.severity,
+                            quantity = remote.quantity,
+                            photoPath = remote.photoPath,
+                            timestamp = remote.timestamp,
+                            reporter = remote.reporter
+                        )
+                        localList[index] = merged
+                    } else {
+                        localList.add(remote)
+                    }
+                }
+
+                // Remove local pins deleted by others
+                localList.removeAll { local ->
+                    remoteList.none { it.id == local.id }
+                }
+
+                _reports.update { localList.filter { !it.isInvalidated } }
                 _lastSyncTime.value = Date()
             }
     }
@@ -42,7 +72,7 @@ object TrailLogRepository {
             AppDatabase::class.java,
             "traillog_database"
         )
-            .fallbackToDestructiveMigration()  // Drops & recreates on schema change
+            .fallbackToDestructiveMigrationOnDowngrade()  // or use .fallbackToDestructiveMigration() if you want to drop on any version change
             .build()
 
         dao = database.trailReportDao()
