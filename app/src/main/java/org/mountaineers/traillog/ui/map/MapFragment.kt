@@ -4,15 +4,16 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -20,8 +21,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.data.ReportType
 import org.mountaineers.traillog.data.TrailLogRepository
@@ -54,9 +55,7 @@ class MapFragment : Fragment() {
         if (granted) launchCamera() else Toast.makeText(requireContext(), "Camera permission required", Toast.LENGTH_LONG).show()
     }
 
-    private val requestLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) @androidx.annotation.RequiresPermission(
-        allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION]
-    ) { granted ->
+    private val requestLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) centerOnUserLocation() else Toast.makeText(requireContext(), "Location permission required", Toast.LENGTH_LONG).show()
     }
 
@@ -75,8 +74,9 @@ class MapFragment : Fragment() {
             )
 
             lifecycleScope.launch {
-                TrailLogRepository.addReport(newReport, photoFile)
-                Toast.makeText(requireContext(), "Pin + photo synced!", Toast.LENGTH_SHORT).show()
+                TrailLogRepository.addReport(newReport, photoFile) {
+                    Toast.makeText(requireContext(), "Pin + photo synced!", Toast.LENGTH_SHORT).show()
+                }
             }
             refreshAllMarkers()
         } else {
@@ -94,9 +94,22 @@ class MapFragment : Fragment() {
         }
 
         setupMap()
+        centerMapOnStartup()  // Center on user location or Three Fingers fallback
         setupLongPress()
         setupMyLocationButton(view)
 
+        // Pin Here button listener
+        view.findViewById<FloatingActionButton>(R.id.fab_pin_here)?.setOnClickListener {
+            centerOnUserLocation()
+            val center = map?.mapCenter as? GeoPoint
+            if (center != null) {
+                showAddReportDialog(center.latitude, center.longitude)
+            } else {
+                Toast.makeText(requireContext(), "No location available to pin", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Live updates from Firebase
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TrailLogRepository.reports.collect {
@@ -129,6 +142,31 @@ class MapFragment : Fragment() {
         map?.controller?.setCenter(GeoPoint(48.17, -121.69))
     }
 
+    private fun centerMapOnStartup() {
+        try {
+            val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+
+            if (location != null) {
+                val point = GeoPoint(location.latitude, location.longitude)
+                map?.controller?.setCenter(point)
+                map?.controller?.setZoom(17.0)
+            } else {
+                // Fallback to Three Fingers
+                val defaultPoint = GeoPoint(48.17, -121.69)
+                map?.controller?.setCenter(defaultPoint)
+                map?.controller?.setZoom(14.0)
+                Toast.makeText(requireContext(), "No location available — centered on Three Fingers", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            // Fallback on error
+            val defaultPoint = GeoPoint(48.17, -121.69)
+            map?.controller?.setCenter(defaultPoint)
+            map?.controller?.setZoom(14.0)
+            Toast.makeText(requireContext(), "Location error — centered on Three Fingers", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun refreshAllMarkers() {
         map?.let { m ->
             m.overlays.clear()
@@ -136,8 +174,7 @@ class MapFragment : Fragment() {
             TrailLogRepository.reports.value.forEach { addMarker(it, m) }
             m.invalidate()
         } ?: run {
-            // Map not ready yet — retry in 200ms
-            view?.postDelayed({ refreshAllMarkers() }, 200)
+            view?.postDelayed({ refreshAllMarkers() }, 100)
         }
     }
 
@@ -148,28 +185,10 @@ class MapFragment : Fragment() {
             snippet = report.description
             relatedObject = report
 
-            icon = when {
-                report.isCleared -> {
-                    resources.getDrawable(android.R.drawable.checkbox_on_background, null) // green check
-                }
-                report.severity.lowercase() == "low" -> {
-                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null).apply {
-                        setTint(0xFFFFFF00.toInt()) // yellow
-                    }
-                }
-                report.severity.lowercase() == "medium" -> {
-                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null).apply {
-                        setTint(0xFFFF9800.toInt()) // orange
-                    }
-                }
-                report.severity.lowercase() == "high" -> {
-                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null).apply {
-                        setTint(0xFFF44336.toInt()) // red
-                    }
-                }
-                else -> {
-                    resources.getDrawable(android.R.drawable.ic_menu_myplaces, null)
-                }
+            icon = if (report.isCleared) {
+                resources.getDrawable(android.R.drawable.checkbox_on_background, null)
+            } else {
+                resources.getDrawable(android.R.drawable.ic_menu_myplaces, null)
             }
 
             setInfoWindow(CustomInfoWindow(mapView,
@@ -193,7 +212,7 @@ class MapFragment : Fragment() {
     }
 
     private fun setupMyLocationButton(view: View) {
-        val fab = view.findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_my_location)
+        val fab = view.findViewById<FloatingActionButton>(R.id.fab_my_location)
         locationManager = requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         fab.setOnClickListener {
@@ -205,15 +224,20 @@ class MapFragment : Fragment() {
         }
     }
 
-    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     private fun centerOnUserLocation() {
         try {
             val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             if (location != null) {
-                map?.controller?.animateTo(GeoPoint(location.latitude, location.longitude), 16.0, 800L)
+                val point = GeoPoint(location.latitude, location.longitude)
+                map?.controller?.setCenter(point)
+                map?.controller?.setZoom(19.0)  // Maximum practical zoom
+            } else {
+                Toast.makeText(requireContext(), "No location available", Toast.LENGTH_SHORT).show()
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Location error", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showAddReportDialog(lat: Double, lon: Double) {
@@ -289,17 +313,12 @@ class MapFragment : Fragment() {
         takePhotoLauncher.launch(photoUri)
     }
 
-
-
     private fun toggleCompleted(report: TrailReport) {
         val updated = report.copy(isCleared = !report.isCleared)
-
-        runBlocking {
+        lifecycleScope.launch {
             TrailLogRepository.updateReport(updated)
         }
-
         refreshAllMarkers()
-
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
