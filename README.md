@@ -1,32 +1,33 @@
-# TrailLog v1.0 – Initial Release
+# TrailLog
 
 **Trail Maintenance Reporting App**  
-Built for **The Mountaineers Everett Lookout Trail Maintenance Committee**
+for **The Mountaineers – Everett Lookout Trail Maintenance Committee**
 
 https://www.mountaineers.org/locations-lodges/everett-branch/committees/everett-lookout-trail-maintenance-committee
 
-**Key Features**
-- Offline-first: Add pins, take photos, mark tasks complete — works fully without signal
-- Real-time Firebase sync: See every crew member's updates when back online
-- Severity selection (Low/Medium/High) with colored tags
-- Completed toggle: green check icon on map, "COMPLETE" in reports list
-- Reports tab: photo thumbnails, quantity, date, severity
-- Stats dashboard: live totals for reports, cleared, logs removed, brushing/treadwork feet
-- Settings: set crew name, CSV export for landowner reports, last sync time + count
-- My Location button + pull-to-refresh
+### Features
+- **Offline-first**: long-press to add a pin, select type (Log / Brush / Treadwork / Other), severity (Low / Medium / High), landowner/team, diameter (inches) or length (feet), take photo — all works fully offline
+- **Real-time Firebase sync**: pins, photos, and status updates sync across crew when online
+- **Completed toggle**: green check icon on map, "COMPLETE" tag in reports list, moves to bottom
+- **Reports tab**: photo thumbnails, date, quantity (inches for logs), landowner, colored severity tag, clickable to jump to pin on map
+- **Stats dashboard**: live totals (reports, cleared, pending, logs removed, brushing ft, treadwork ft) — filtered by selected landowner
+- **Settings**: set crew name, select default landowner/team filter (persists across app restarts), force sync, last sync time + total reports count
+- **Map**: My Location (max zoom), Pin Here (drops pin at current GPS), startup centering on user location or Three Fingers fallback
+- **Pull-to-refresh** on Reports tab
 
-**Installation**
-- Download `TrailLog-v1.0.apk` from Assets below
-- Install on Android 8.0+ (allow unknown sources)
-- Grant camera & location permissions
-- Pre-cache maps: Open Map tab on WiFi, pan/zoom over Everett Lookout area
+### Installation
+1. Download **TrailLog-v1.0.apk** from Releases
+2. Install on Android 8.0+ (allow unknown sources)
+3. Grant camera & location permissions
+4. Pre-cache maps on WiFi before heading out (pan/zoom over Everett Lookout area)
 
-**Known Limitations**
-- Photos use local paths initially (Firebase Storage upload in progress)
-- No full offline queue yet (changes queue in Firebase persistence)
+### Development
+- Android Studio (latest stable)
+- Kotlin + Firebase (Firestore + Storage) + OSMdroid + Room + WorkManager
+- Clone: `git clone https://github.com/friendstflo/TrailLog.git`
 
-**Feedback** — Bugs, suggestions, or contributions welcome via Issues.
+### Credits
+Built with ❤️ for trail safety and efficiency by Dan Renfrow (@renfnut)  
+Feedback / bugs → Issues tab
 
-Made with ❤️ for trail safety.
-
-Thanks to Dan Renfrow for vision and testing.
+Made possible by The Mountaineers Everett Lookout Trail Maintenance Committee.
