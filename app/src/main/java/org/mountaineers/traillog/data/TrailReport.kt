@@ -29,5 +29,6 @@ data class TrailReport(
     val isInvalidated: Boolean = false,
 
     val timestamp: Date = Date(),
-    val reporter: String = "Anonymous Crew"
+    val reporter: String = "Anonymous Crew",
+    val landowner: String = "Unknown"
 )

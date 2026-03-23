@@ -25,7 +25,7 @@ class CustomInfoWindow(
         view.findViewById<TextView>(R.id.tv_date).text = report.timestamp.toString().take(10)
 
         val qtyText = when (report.type) {
-            org.mountaineers.traillog.data.ReportType.LOG -> "${report.quantity} logs"
+            org.mountaineers.traillog.data.ReportType.LOG -> "${report.quantity} inches"
             else -> "${report.quantity} ft"
         }
         view.findViewById<TextView>(R.id.tv_quantity).text = qtyText

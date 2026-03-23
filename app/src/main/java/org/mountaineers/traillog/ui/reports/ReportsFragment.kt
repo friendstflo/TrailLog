@@ -1,14 +1,16 @@
 package org.mountaineers.traillog.ui.reports
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -24,6 +26,9 @@ class ReportsFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ReportsAdapter
     private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var spinnerLandowner: Spinner
+
+    private val landowners = listOf("All", "Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -34,6 +39,7 @@ class ReportsFragment : Fragment() {
 
         recyclerView = view.findViewById(R.id.recycler_reports)
         swipeRefresh = view.findViewById(R.id.swipe_refresh)
+        spinnerLandowner = view.findViewById(R.id.spinner_landowner)
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
@@ -46,27 +52,49 @@ class ReportsFragment : Fragment() {
         }
         recyclerView.adapter = adapter
 
+        // Landowner filter spinner
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, landowners)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerLandowner.adapter = adapter
+
+        // Load saved selection
+        val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
+        val savedLandowner = prefs.getString("default_landowner", "All") ?: "All"
+        val position = landowners.indexOf(savedLandowner)
+        spinnerLandowner.setSelection(if (position >= 0) position else 0)
+
+        spinnerLandowner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selected = landowners[position]
+                prefs.edit().putString("default_landowner", selected).apply()
+                Toast.makeText(requireContext(), "Filtering by: $selected", Toast.LENGTH_SHORT).show()
+                // Refresh list immediately
+                applyFilter(TrailLogRepository.reports.value)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
         // Pull-to-refresh
         swipeRefresh.setOnRefreshListener {
             swipeRefresh.isRefreshing = false
             Toast.makeText(requireContext(), "Refreshed", Toast.LENGTH_SHORT).show()
         }
 
-        // Initial load + live updates
+        // Live updates from Firebase
         lifecycleScope.launch {
-            // First load immediately
-            val initialReports = TrailLogRepository.reports.value
-            adapter.submitList(initialReports.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
-
-            // Then live collect
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                TrailLogRepository.reports.collect { updatedList ->
-                    adapter.submitList(updatedList.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
-                }
+            TrailLogRepository.reports.collect { updatedList ->
+                applyFilter(updatedList)
             }
         }
 
         return view
+    }
+
+    private fun applyFilter(updatedList: List<TrailReport>) {
+        val filter = spinnerLandowner.selectedItem?.toString() ?: "All"
+        val filtered = if (filter == "All") updatedList else updatedList.filter { it.landowner == filter }
+        adapter.submitList(filtered.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
     }
 }
 
@@ -93,22 +121,25 @@ class ReportsAdapter(private val onClick: (TrailReport) -> Unit) :
         itemView.findViewById<android.widget.TextView>(R.id.tv_description).text = report.description
 
         val qtyText = when (report.type) {
-            org.mountaineers.traillog.data.ReportType.LOG -> "${report.quantity} logs"
+            org.mountaineers.traillog.data.ReportType.LOG -> "${report.quantity} inches"
             else -> "${report.quantity} ft"
         }
         itemView.findViewById<android.widget.TextView>(R.id.tv_quantity).text = qtyText
 
+        val landownerTv = itemView.findViewById<android.widget.TextView>(R.id.tv_landowner)
+        landownerTv.text = "Landowner: ${report.landowner}"
+
         val severityTv = itemView.findViewById<android.widget.TextView>(R.id.tv_severity)
         if (report.isCleared) {
             severityTv.text = "COMPLETE"
-            severityTv.setBackgroundColor(0xFF4CAF50.toInt()) // green
+            severityTv.setBackgroundColor(0xFF4CAF50.toInt())
         } else {
             severityTv.text = report.severity.uppercase()
             severityTv.setBackgroundColor(when (report.severity.lowercase()) {
-                "low" -> 0xFFFFFF00.toInt()   // yellow
-                "medium" -> 0xFFFF9800.toInt() // orange
-                "high" -> 0xFFF44336.toInt()   // red
-                else -> 0xFFFF8C00.toInt()     // default orange
+                "low" -> 0xFFFFFF00.toInt()
+                "medium" -> 0xFFFF9800.toInt()
+                "high" -> 0xFFF44336.toInt()
+                else -> 0xFFFF8C00.toInt()
             })
         }
 

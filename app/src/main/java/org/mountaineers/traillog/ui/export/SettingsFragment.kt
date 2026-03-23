@@ -5,8 +5,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -14,14 +17,18 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.data.TrailLogRepository
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 class SettingsFragment : Fragment() {
 
     private lateinit var etCrewName: EditText
     private lateinit var tvLastSync: TextView
     private lateinit var btnExport: Button
-    private lateinit var btnForceSync: Button   // ← New
+    private lateinit var spinnerLandowner: Spinner
+
+    private val landowners = listOf("All", "Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,11 +40,33 @@ class SettingsFragment : Fragment() {
         etCrewName = view.findViewById(R.id.et_crew_name)
         tvLastSync = view.findViewById(R.id.tv_last_sync)
         btnExport = view.findViewById(R.id.btn_export_csv)
-        btnForceSync = view.findViewById(R.id.btn_force_sync)   // ← New
+        spinnerLandowner = view.findViewById(R.id.spinner_landowner)
 
-        // Load crew name
         val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
-        etCrewName.setText(prefs.getString("crew_name", "Everett Crew"))
+
+        // Crew name
+        etCrewName.setText(prefs.getString("crew_name", "You"))
+
+        // Landowner filter spinner
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, landowners)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerLandowner.adapter = adapter
+
+        // Load saved selection (default to "Snohomish County")
+        val savedLandowner = prefs.getString("default_landowner", "Snohomish County") ?: "Snohomish County"
+        val position = landowners.indexOf(savedLandowner)
+        spinnerLandowner.setSelection(if (position >= 0) position else 2)  // 2 = Snohomish County
+
+        // Save selection on change
+        spinnerLandowner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selected = landowners[position]
+                prefs.edit().putString("default_landowner", selected).apply()
+                Toast.makeText(requireContext(), "Filtering by: $selected", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
 
         // Live sync status + count
         lifecycleScope.launch {
@@ -53,21 +82,12 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        btnExport.setOnClickListener { exportCsv() }
-
-        // NEW: Force Sync button
-        btnForceSync.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    TrailLogRepository.syncAll()
-                    Toast.makeText(requireContext(), "✅ Sync forced — pulling latest data", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(requireContext(), "Sync failed: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
+        btnExport.setOnClickListener {
+            // Your CSV export logic
+            Toast.makeText(requireContext(), "CSV exported!", Toast.LENGTH_SHORT).show()
         }
 
-        // Save crew name
+        // Save crew name on focus loss
         etCrewName.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 prefs.edit().putString("crew_name", etCrewName.text.toString().trim()).apply()
@@ -75,10 +95,5 @@ class SettingsFragment : Fragment() {
         }
 
         return view
-    }
-
-    private fun exportCsv() {
-        // Your existing CSV logic here
-        Toast.makeText(requireContext(), "CSV exported!", Toast.LENGTH_SHORT).show()
     }
 }

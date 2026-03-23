@@ -57,6 +57,16 @@
                 android:textColor="#FF8C00"
                 android:layout_marginTop="4dp" />
 
+	    <TextView
+ 	        android:id="@+id/tv_landowner"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:textSize="14sp"
+	        android:textColor="#000000"
+	        android:textStyle="italic"
+	        android:layout_marginTop="4dp"
+	        android:text="Landowner: Unknown" />
+
         </LinearLayout>
 
         <!-- Severity Tag -->

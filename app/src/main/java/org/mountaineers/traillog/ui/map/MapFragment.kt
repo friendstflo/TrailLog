@@ -7,13 +7,13 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -49,6 +49,7 @@ class MapFragment : Fragment() {
     private var pendingType = ReportType.LOG
     private var pendingSeverity = "Medium"
     private var pendingQuantity = 0
+    private var pendingLandowner = "Snohomish County"  // Default
     private var photoFile: File? = null
 
     private val requestCameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -70,6 +71,7 @@ class MapFragment : Fragment() {
                 photoPath = photoFile!!.absolutePath,
                 quantity = pendingQuantity,
                 reporter = getSavedCrewName(),
+                landowner = pendingLandowner,
                 isCleared = false
             )
 
@@ -94,11 +96,11 @@ class MapFragment : Fragment() {
         }
 
         setupMap()
-        centerMapOnStartup()  // Center on user location or Three Fingers fallback
+        centerMapOnStartup()
         setupLongPress()
         setupMyLocationButton(view)
 
-        // Pin Here button listener
+        // Pin Here button
         view.findViewById<FloatingActionButton>(R.id.fab_pin_here)?.setOnClickListener {
             centerOnUserLocation()
             val center = map?.mapCenter as? GeoPoint
@@ -109,7 +111,7 @@ class MapFragment : Fragment() {
             }
         }
 
-        // Live updates from Firebase
+        // Live updates
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TrailLogRepository.reports.collect {
@@ -152,14 +154,12 @@ class MapFragment : Fragment() {
                 map?.controller?.setCenter(point)
                 map?.controller?.setZoom(17.0)
             } else {
-                // Fallback to Three Fingers
                 val defaultPoint = GeoPoint(48.17, -121.69)
                 map?.controller?.setCenter(defaultPoint)
                 map?.controller?.setZoom(14.0)
                 Toast.makeText(requireContext(), "No location available — centered on Three Fingers", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            // Fallback on error
             val defaultPoint = GeoPoint(48.17, -121.69)
             map?.controller?.setCenter(defaultPoint)
             map?.controller?.setZoom(14.0)
@@ -171,7 +171,18 @@ class MapFragment : Fragment() {
         map?.let { m ->
             m.overlays.clear()
             setupLongPress()
-            TrailLogRepository.reports.value.forEach { addMarker(it, m) }
+
+            val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
+            val selectedLandowner = prefs.getString("default_landowner", "All") ?: "All"
+
+            val filteredReports = if (selectedLandowner == "All") {
+                TrailLogRepository.reports.value
+            } else {
+                TrailLogRepository.reports.value.filter { it.landowner == selectedLandowner }
+            }
+
+            filteredReports.forEach { addMarker(it, m) }
+
             m.invalidate()
         } ?: run {
             view?.postDelayed({ refreshAllMarkers() }, 100)
@@ -224,6 +235,7 @@ class MapFragment : Fragment() {
         }
     }
 
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     private fun centerOnUserLocation() {
         try {
             val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
@@ -231,7 +243,7 @@ class MapFragment : Fragment() {
             if (location != null) {
                 val point = GeoPoint(location.latitude, location.longitude)
                 map?.controller?.setCenter(point)
-                map?.controller?.setZoom(19.0)  // Maximum practical zoom
+                map?.controller?.setZoom(19.0)
             } else {
                 Toast.makeText(requireContext(), "No location available", Toast.LENGTH_SHORT).show()
             }
@@ -270,22 +282,40 @@ class MapFragment : Fragment() {
             .setSingleChoiceItems(severities, 1) { _, which ->
                 selectedSeverity = severities[which]
             }
-            .setPositiveButton("Next - Quantity") { _, _ ->
-                showQuantityDialog(lat, lon, type, selectedSeverity)
+            .setPositiveButton("Next - Landowner") { _, _ ->
+                showLandownerDialog(lat, lon, type, selectedSeverity)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun showQuantityDialog(lat: Double, lon: Double, type: ReportType, severity: String) {
+    private fun showLandownerDialog(lat: Double, lon: Double, type: ReportType, severity: String) {
+        val landowners = listOf("Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
+        var selectedLandowner = "Snohomish County"  // default
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Landowner / Team")
+            .setSingleChoiceItems(landowners.toTypedArray(), 2) { _, which ->
+                selectedLandowner = landowners[which]
+            }
+            .setPositiveButton("Next - Quantity") { _, _ ->
+                showQuantityDialog(lat, lon, type, severity, selectedLandowner)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showQuantityDialog(lat: Double, lon: Double, type: ReportType, severity: String, landowner: String) {
         val title = when (type) {
-            ReportType.LOG -> "How many logs to clear"
+            ReportType.LOG -> "Log diameter in inches"
             else -> "Linear feet to clear?"
         }
 
+        val hint = if (type == ReportType.LOG) "e.g. 12" else "Feet"
+
         val input = EditText(requireContext()).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            hint = if (type == ReportType.LOG) "Number of logs" else "Feet"
+            this.hint = hint
         }
 
         AlertDialog.Builder(requireContext())
@@ -297,6 +327,7 @@ class MapFragment : Fragment() {
                 pendingLng = lon
                 pendingType = type
                 pendingSeverity = severity
+                pendingLandowner = landowner
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
             .setNegativeButton("Cancel", null)

@@ -9,6 +9,12 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+    <Spinner
+        android:id="@+id/spinner_landowner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp" />
+
         <!-- Overall Totals -->
         <TextView
             android:id="@+id/tv_total"
