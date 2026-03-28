@@ -1,10 +1,11 @@
 package org.mountaineers.traillog.data
-import androidx.room.Room
+
 import android.content.Context
 import android.util.Log
+import androidx.room.Room
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,72 +15,82 @@ import java.util.Date
 
 object TrailLogRepository {
 
-    @Suppress("StaticFieldLeak")
+    private lateinit var dao: TrailReportDao
+
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance().reference
-    private lateinit var dao: TrailReportDao
+
     private val _reports = MutableStateFlow<List<TrailReport>>(emptyList())
     val reports: StateFlow<List<TrailReport>> = _reports.asStateFlow()
 
     private val _lastSyncTime = MutableStateFlow<Date?>(null)
     val lastSyncTime: StateFlow<Date?> = _lastSyncTime.asStateFlow()
 
-    init {
+    // ==================== Initialization ====================
+    fun initialize(context: Context) {
+        if (::dao.isInitialized) return
+
+        Thread {
+            try {
+                val database = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "traillog_database"
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+
+                dao = database.trailReportDao()
+                Log.d("TrailLogRepo", "Room initialized successfully")
+            } catch (e: Exception) {
+                Log.e("TrailLogRepo", "Room initialization failed", e)
+            }
+        }.start()
+    }
+
+    // ==================== Start Firebase Listener (Call after login) ====================
+    // ==================== Firebase Listener ====================
+    fun startFirebaseListener() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            Log.w("TrailLogRepo", "No authenticated user - cannot start listener")
+            return
+        }
+
+        Log.d("TrailLogRepo", "=== STARTING FIREBASE LISTENER for user: ${currentUser.uid} ===")
+
         db.collection("reports")
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    Log.e("Firebase", "Listen failed: ${e.message}")
+                    Log.e("TrailLogRepo", "Listener error", e)
                     return@addSnapshotListener
                 }
 
-                val remoteList = snapshot?.toObjects(TrailReport::class.java) ?: emptyList()
-                val localList = _reports.value.toMutableList()
+                val list = snapshot?.toObjects(TrailReport::class.java) ?: emptyList()
+                val filtered = list.filter { !it.isInvalidated }
 
-                // Merge: local isCleared ALWAYS wins
-                remoteList.forEach { remote ->
-                    val index = localList.indexOfFirst { it.id == remote.id }
-                    if (index != -1) {
-                        val local = localList[index]
-                        // Keep local isCleared, take everything else from server
-                        val merged = local.copy(
-                            description = remote.description,
-                            type = remote.type,
-                            severity = remote.severity,
-                            quantity = remote.quantity,
-                            photoPath = remote.photoPath,
-                            timestamp = remote.timestamp,
-                            reporter = remote.reporter
-                        )
-                        localList[index] = merged
-                    } else {
-                        localList.add(remote)
-                    }
-                }
-
-                // Remove local pins deleted by others
-                localList.removeAll { local ->
-                    remoteList.none { it.id == local.id }
-                }
-
-                _reports.update { localList.filter { !it.isInvalidated } }
+                _reports.update { filtered }
                 _lastSyncTime.value = Date()
+
+                Log.d("TrailLogRepo", "Loaded ${filtered.size} reports from Firestore")
             }
     }
-    fun initialize(context: Context) {
-        val database = Room.databaseBuilder(
-            context.applicationContext,
-            AppDatabase::class.java,
-            "traillog_database"
-        )
-            .fallbackToDestructiveMigrationOnDowngrade()  // or use .fallbackToDestructiveMigration() if you want to drop on any version change
-            .build()
 
-        dao = database.trailReportDao()
+    // ==================== Landowner Helpers ====================
+    fun getCurrentLandownerFilter(context: Context): String {
+        val prefs = context.getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
+        return prefs.getString("default_landowner", "All") ?: "All"
     }
-    fun addReport(report: TrailReport, photoFile: File? = null, onComplete: () -> Unit = {}) {
-        // Optimistic local update
-        _reports.update { it + report }
+
+    fun setCurrentLandowner(context: Context, landowner: String) {
+        val prefs = context.getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("default_landowner", landowner).apply()
+    }
+
+    // ==================== Data Operations ====================
+    fun addReport(report: TrailReport, photoFile: File? = null) {
+        _reports.update { it + report }   // optimistic update
 
         val docRef = db.collection("reports").document(report.id)
 
@@ -90,20 +101,15 @@ object TrailLogRepository {
                     photoRef.downloadUrl.addOnSuccessListener { uri ->
                         val reportWithUrl = report.copy(photoPath = uri.toString())
                         docRef.set(reportWithUrl)
-                            .addOnSuccessListener { onComplete() }
-                            .addOnFailureListener {
-                                Log.e(
-                                    "Firebase",
-                                    "Firestore write failed: ${it.message}"
-                                )
-                            }
+                            .addOnSuccessListener { Log.d("TrailLogRepo", "Report with photo saved") }
+                            .addOnFailureListener { Log.e("TrailLogRepo", "Firestore write failed", it) }
                     }
                 }
-                .addOnFailureListener { Log.e("Firebase", "Photo upload failed: ${it.message}") }
+                .addOnFailureListener { Log.e("TrailLogRepo", "Photo upload failed", it) }
         } else {
             docRef.set(report)
-                .addOnSuccessListener { onComplete() }
-                .addOnFailureListener { Log.e("Firebase", "Firestore write failed: ${it.message}") }
+                .addOnSuccessListener { Log.d("TrailLogRepo", "Report saved") }
+                .addOnFailureListener { Log.e("TrailLogRepo", "Firestore write failed", it) }
         }
     }
 
@@ -111,31 +117,27 @@ object TrailLogRepository {
         _reports.update { current ->
             current.map { if (it.id == report.id) report else it }
         }
-
         db.collection("reports").document(report.id).set(report)
-            .addOnFailureListener { Log.e("Firebase", "Update failed: ${it.message}") }
     }
-    fun getAllReports(): Flow<List<TrailReport>> {
-        return dao.getAll()
-    }
+
     fun deleteReport(reportId: String) {
-        _reports.update { current ->
-            current.filter { it.id != reportId }
-        }
-
+        _reports.update { current -> current.filter { it.id != reportId } }
         db.collection("reports").document(reportId).delete()
-            .addOnFailureListener { Log.e("Firebase", "Delete failed: ${it.message}") }
     }
 
+    // Force sync (can be called from Settings)
     fun syncAll() {
-        try {
-            val snapshot =
-                db.collection("reports").get().result   // ← Fixed: .result instead of .get()
-            val remote = snapshot.toObjects(TrailReport::class.java)
-            _reports.update { remote.filter { !it.isInvalidated } }
-            Log.d("Firebase", "syncAll pulled ${remote.size} reports")
-        } catch (e: Exception) {
-            Log.e("Firebase", "syncAll failed: ${e.message}")
-        }
+        db.collection("reports")
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val list = snapshot.toObjects(TrailReport::class.java)
+                _reports.update { list.filter { !it.isInvalidated } }
+                _lastSyncTime.value = Date()
+                Log.d("TrailLogRepo", "Manual sync completed: ${list.size} reports")
+            }
+            .addOnFailureListener { e ->
+                Log.e("TrailLogRepo", "Manual sync failed", e)
+            }
     }
 }

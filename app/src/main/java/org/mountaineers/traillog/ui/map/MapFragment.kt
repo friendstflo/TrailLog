@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.view.LayoutInflater
@@ -13,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -49,15 +47,17 @@ class MapFragment : Fragment() {
     private var pendingType = ReportType.LOG
     private var pendingSeverity = "Medium"
     private var pendingQuantity = 0
-    private var pendingLandowner = "Snohomish County"  // Default
+    private var pendingLandowner = "Snohomish County"
     private var photoFile: File? = null
 
+    private val landowners = listOf("All", "Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
+
     private val requestCameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) launchCamera() else Toast.makeText(requireContext(), "Camera permission required", Toast.LENGTH_LONG).show()
+        if (granted) launchCamera() else Toast.makeText(requireContext(), "Camera permission is required", Toast.LENGTH_LONG).show()
     }
 
     private val requestLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) centerOnUserLocation() else Toast.makeText(requireContext(), "Location permission required", Toast.LENGTH_LONG).show()
+        if (granted) centerOnUserLocation() else Toast.makeText(requireContext(), "Location permission is required", Toast.LENGTH_LONG).show()
     }
 
     private val takePhotoLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -76,13 +76,12 @@ class MapFragment : Fragment() {
             )
 
             lifecycleScope.launch {
-                TrailLogRepository.addReport(newReport, photoFile) {
-                    Toast.makeText(requireContext(), "Pin + photo synced!", Toast.LENGTH_SHORT).show()
-                }
+                TrailLogRepository.addReport(newReport, photoFile)
             }
-            refreshAllMarkers()
+            view?.postDelayed({ refreshAllMarkers() }, 300)
+            Toast.makeText(requireContext(), "Pin added successfully", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(requireContext(), "Photo cancelled", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Photo capture cancelled", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -95,23 +94,37 @@ class MapFragment : Fragment() {
             return view
         }
 
-        setupMap()
-        centerMapOnStartup()
-        setupLongPress()
-        setupMyLocationButton(view)
+        setupMapBasic()
 
-        // Pin Here button
-        view.findViewById<FloatingActionButton>(R.id.fab_pin_here)?.setOnClickListener {
-            centerOnUserLocation()
-            val center = map?.mapCenter as? GeoPoint
-            if (center != null) {
-                showAddReportDialog(center.latitude, center.longitude)
-            } else {
-                Toast.makeText(requireContext(), "No location available to pin", Toast.LENGTH_SHORT).show()
+        // Handle target pin from Reports
+        val args = arguments
+        if (args != null) {
+            val targetLat = args.getDouble("targetLat", 0.0)
+            val targetLng = args.getDouble("targetLng", 0.0)
+            if (targetLat != 0.0 && targetLng != 0.0) {
+                arguments = null
+                view.postDelayed({
+                    val point = GeoPoint(targetLat, targetLng)
+                    map?.controller?.animateTo(point, 18.0, 1200L)
+                }, 500)
             }
         }
 
-        // Live updates
+        view.findViewById<FloatingActionButton>(R.id.fab_pin_here)?.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                return@setOnClickListener
+            }
+            centerOnUserLocation()
+            view.postDelayed({
+                val center = map?.mapCenter as? GeoPoint
+                if (center != null) {
+                    showAddReportDialog(center.latitude, center.longitude)
+                }
+            }, 300)
+        }
+
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TrailLogRepository.reports.collect {
@@ -120,31 +133,40 @@ class MapFragment : Fragment() {
             }
         }
 
-        arguments?.let { args ->
-            val targetLat = args.getDouble("targetLat", 0.0)
-            val targetLng = args.getDouble("targetLng", 0.0)
-            if (targetLat != 0.0 && targetLng != 0.0) {
-                map?.controller?.animateTo(GeoPoint(targetLat, targetLng), 17.0, 1200L)
-            }
-        }
-
         return view
     }
 
     override fun onResume() {
         super.onResume()
+        setupLongPress()
+        setupMyLocationButton(requireView())
+        centerMapOnStartup()
         refreshAllMarkers()
     }
 
-    private fun setupMap() {
+    private fun setupMapBasic() {
         Configuration.getInstance().userAgentValue = "org.mountaineers.traillog"
         map?.setTileSource(TileSourceFactory.MAPNIK)
         map?.setMultiTouchControls(true)
         map?.controller?.setZoom(14.0)
-        map?.controller?.setCenter(GeoPoint(48.17, -121.69))
     }
 
     private fun centerMapOnStartup() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED) {
+            centerOnUserLocation()
+        } else {
+            centerOnDefaultLocation()
+        }
+    }
+
+    private fun centerOnUserLocation() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+
         try {
             val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
@@ -152,19 +174,19 @@ class MapFragment : Fragment() {
             if (location != null) {
                 val point = GeoPoint(location.latitude, location.longitude)
                 map?.controller?.setCenter(point)
-                map?.controller?.setZoom(17.0)
+                map?.controller?.setZoom(19.0)
             } else {
-                val defaultPoint = GeoPoint(48.17, -121.69)
-                map?.controller?.setCenter(defaultPoint)
-                map?.controller?.setZoom(14.0)
-                Toast.makeText(requireContext(), "No location available — centered on Three Fingers", Toast.LENGTH_SHORT).show()
+                centerOnDefaultLocation()
             }
         } catch (e: Exception) {
-            val defaultPoint = GeoPoint(48.17, -121.69)
-            map?.controller?.setCenter(defaultPoint)
-            map?.controller?.setZoom(14.0)
-            Toast.makeText(requireContext(), "Location error — centered on Three Fingers", Toast.LENGTH_SHORT).show()
+            centerOnDefaultLocation()
         }
+    }
+
+    private fun centerOnDefaultLocation() {
+        val defaultPoint = GeoPoint(48.17, -121.69)
+        map?.controller?.setCenter(defaultPoint)
+        map?.controller?.setZoom(14.0)
     }
 
     private fun refreshAllMarkers() {
@@ -172,20 +194,18 @@ class MapFragment : Fragment() {
             m.overlays.clear()
             setupLongPress()
 
-            val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
-            val selectedLandowner = prefs.getString("default_landowner", "All") ?: "All"
+            val filter = TrailLogRepository.getCurrentLandownerFilter(requireContext())
 
-            val filteredReports = if (selectedLandowner == "All") {
+            val filteredReports = if (filter == "All") {
                 TrailLogRepository.reports.value
             } else {
-                TrailLogRepository.reports.value.filter { it.landowner == selectedLandowner }
+                TrailLogRepository.reports.value.filter { it.landowner == filter }
             }
 
             filteredReports.forEach { addMarker(it, m) }
-
             m.invalidate()
         } ?: run {
-            view?.postDelayed({ refreshAllMarkers() }, 100)
+            view?.postDelayed({ refreshAllMarkers() }, 250)
         }
     }
 
@@ -227,30 +247,11 @@ class MapFragment : Fragment() {
         locationManager = requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         fab.setOnClickListener {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                centerOnUserLocation()
-            } else {
-                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
+            centerOnUserLocation()
         }
     }
 
-    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    private fun centerOnUserLocation() {
-        try {
-            val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            if (location != null) {
-                val point = GeoPoint(location.latitude, location.longitude)
-                map?.controller?.setCenter(point)
-                map?.controller?.setZoom(19.0)
-            } else {
-                Toast.makeText(requireContext(), "No location available", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Location error", Toast.LENGTH_SHORT).show()
-        }
-    }
+    // ==================== Add Report Flow ====================
 
     private fun showAddReportDialog(lat: Double, lon: Double) {
         val types = resources.getStringArray(R.array.report_types)
@@ -266,7 +267,7 @@ class MapFragment : Fragment() {
                     else -> ReportType.OTHER
                 }
             }
-            .setPositiveButton("Next - Severity") { _, _ ->
+            .setPositiveButton("Next") { _, _ ->
                 showSeverityDialog(lat, lon, selectedType)
             }
             .setNegativeButton("Cancel", null)
@@ -282,7 +283,7 @@ class MapFragment : Fragment() {
             .setSingleChoiceItems(severities, 1) { _, which ->
                 selectedSeverity = severities[which]
             }
-            .setPositiveButton("Next - Landowner") { _, _ ->
+            .setPositiveButton("Next") { _, _ ->
                 showLandownerDialog(lat, lon, type, selectedSeverity)
             }
             .setNegativeButton("Cancel", null)
@@ -290,16 +291,16 @@ class MapFragment : Fragment() {
     }
 
     private fun showLandownerDialog(lat: Double, lon: Double, type: ReportType, severity: String) {
-        val landowners = listOf("Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
-        var selectedLandowner = "Snohomish County"  // default
+        val currentFilter = TrailLogRepository.getCurrentLandownerFilter(requireContext())
+        val defaultIndex = if (currentFilter != "All") landowners.indexOf(currentFilter) else 3
 
         AlertDialog.Builder(requireContext())
             .setTitle("Landowner / Team")
-            .setSingleChoiceItems(landowners.toTypedArray(), 2) { _, which ->
-                selectedLandowner = landowners[which]
+            .setSingleChoiceItems(landowners.toTypedArray(), defaultIndex) { _, which ->
+                pendingLandowner = landowners[which]
             }
-            .setPositiveButton("Next - Quantity") { _, _ ->
-                showQuantityDialog(lat, lon, type, severity, selectedLandowner)
+            .setPositiveButton("Next") { _, _ ->
+                showQuantityDialog(lat, lon, type, severity, pendingLandowner)
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -308,26 +309,24 @@ class MapFragment : Fragment() {
     private fun showQuantityDialog(lat: Double, lon: Double, type: ReportType, severity: String, landowner: String) {
         val title = when (type) {
             ReportType.LOG -> "Log diameter in inches"
-            else -> "Linear feet to clear?"
+            else -> "Linear feet to clear"
         }
-
-        val hint = if (type == ReportType.LOG) "e.g. 12" else "Feet"
 
         val input = EditText(requireContext()).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            this.hint = hint
         }
 
         AlertDialog.Builder(requireContext())
             .setTitle(title)
             .setView(input)
-            .setPositiveButton("Take Photo & Add") { _, _ ->
+            .setPositiveButton("Take Photo") { _, _ ->
                 pendingQuantity = input.text.toString().toIntOrNull() ?: 0
                 pendingLat = lat
                 pendingLng = lon
                 pendingType = type
                 pendingSeverity = severity
                 pendingLandowner = landowner
+
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
             .setNegativeButton("Cancel", null)
@@ -340,7 +339,11 @@ class MapFragment : Fragment() {
         val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         photoFile = File(storageDir, imageName)
 
-        val photoUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.fileprovider", photoFile!!)
+        val photoUri = FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.fileprovider",
+            photoFile!!
+        )
         takePhotoLauncher.launch(photoUri)
     }
 
@@ -350,28 +353,36 @@ class MapFragment : Fragment() {
             TrailLogRepository.updateReport(updated)
         }
         refreshAllMarkers()
+
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     private fun showEditDialog(report: TrailReport) {
         val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_report, null)
-        val etDesc = view.findViewById<EditText>(R.id.et_description)
-        val etQty = view.findViewById<EditText>(R.id.et_quantity)
 
-        etDesc.setText(report.description)
-        etQty.setText(report.quantity.toString())
+        val etDescription = view.findViewById<EditText>(R.id.et_description)
+        val etQuantity = view.findViewById<EditText>(R.id.et_quantity)
+
+        etDescription.setText(report.description)
+        etQuantity.setText(report.quantity.toString())
 
         AlertDialog.Builder(requireContext())
             .setTitle("Edit Report")
             .setView(view)
             .setPositiveButton("Save") { _, _ ->
-                val newDesc = etDesc.text.toString().trim()
-                val newQty = etQty.text.toString().toIntOrNull() ?: report.quantity
-                val updated = report.copy(description = newDesc, quantity = newQty)
+                val newDescription = etDescription.text.toString().trim()
+                val newQuantity = etQuantity.text.toString().toIntOrNull() ?: report.quantity
+
+                val updatedReport = report.copy(
+                    description = newDescription,
+                    quantity = newQuantity
+                )
+
                 lifecycleScope.launch {
-                    TrailLogRepository.updateReport(updated)
+                    TrailLogRepository.updateReport(updatedReport)
                 }
+
                 refreshAllMarkers()
                 Toast.makeText(requireContext(), "Report updated", Toast.LENGTH_SHORT).show()
             }
@@ -385,9 +396,17 @@ class MapFragment : Fragment() {
             .setMessage("This will permanently remove the pin and photo.\n\nAre you sure?")
             .setPositiveButton("Delete") { _, _ ->
                 if (report.photoPath.isNotEmpty()) File(report.photoPath).delete()
+
                 lifecycleScope.launch {
                     TrailLogRepository.deleteReport(report.id)
                 }
+
+                map?.overlays?.forEach { overlay ->
+                    if (overlay is Marker && (overlay.relatedObject as? TrailReport)?.id == report.id) {
+                        overlay.closeInfoWindow()
+                    }
+                }
+
                 refreshAllMarkers()
                 Toast.makeText(requireContext(), "Report deleted", Toast.LENGTH_SHORT).show()
             }

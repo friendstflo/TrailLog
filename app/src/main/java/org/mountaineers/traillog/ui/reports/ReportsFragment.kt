@@ -52,48 +52,49 @@ class ReportsFragment : Fragment() {
         }
         recyclerView.adapter = adapter
 
-        // Landowner filter spinner
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, landowners)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerLandowner.adapter = adapter
+        val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, landowners)
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerLandowner.adapter = spinnerAdapter
 
-        // Load saved selection
         val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
-        val savedLandowner = prefs.getString("default_landowner", "All") ?: "All"
-        val position = landowners.indexOf(savedLandowner)
-        spinnerLandowner.setSelection(if (position >= 0) position else 0)
+        val saved = prefs.getString("default_landowner", "All") ?: "All"
+        spinnerLandowner.setSelection(landowners.indexOf(saved).takeIf { it >= 0 } ?: 0)
 
         spinnerLandowner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selected = landowners[position]
                 prefs.edit().putString("default_landowner", selected).apply()
                 Toast.makeText(requireContext(), "Filtering by: $selected", Toast.LENGTH_SHORT).show()
-                // Refresh list immediately
                 applyFilter(TrailLogRepository.reports.value)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        // Pull-to-refresh
         swipeRefresh.setOnRefreshListener {
             swipeRefresh.isRefreshing = false
-            Toast.makeText(requireContext(), "Refreshed", Toast.LENGTH_SHORT).show()
         }
 
-        // Live updates from Firebase
         lifecycleScope.launch {
-            TrailLogRepository.reports.collect { updatedList ->
-                applyFilter(updatedList)
+            TrailLogRepository.reports.collect { reports ->
+                applyFilter(reports)
             }
         }
 
         return view
     }
 
-    private fun applyFilter(updatedList: List<TrailReport>) {
-        val filter = spinnerLandowner.selectedItem?.toString() ?: "All"
-        val filtered = if (filter == "All") updatedList else updatedList.filter { it.landowner == filter }
+    override fun onResume() {
+        super.onResume()
+        applyFilter(TrailLogRepository.reports.value)
+    }
+
+    private fun applyFilter(reports: List<TrailReport>) {
+        val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
+        val filter = prefs.getString("default_landowner", "All") ?: "All"
+
+        val filtered = if (filter == "All") reports else reports.filter { it.landowner == filter }
+
         adapter.submitList(filtered.sortedWith(compareBy({ it.isCleared }, { -it.timestamp.time })))
     }
 }
@@ -126,8 +127,7 @@ class ReportsAdapter(private val onClick: (TrailReport) -> Unit) :
         }
         itemView.findViewById<android.widget.TextView>(R.id.tv_quantity).text = qtyText
 
-        val landownerTv = itemView.findViewById<android.widget.TextView>(R.id.tv_landowner)
-        landownerTv.text = "Landowner: ${report.landowner}"
+        itemView.findViewById<android.widget.TextView>(R.id.tv_landowner).text = "Landowner: ${report.landowner}"
 
         val severityTv = itemView.findViewById<android.widget.TextView>(R.id.tv_severity)
         if (report.isCleared) {

@@ -2,7 +2,13 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/mapFragment">
+    app:startDestination="@id/loginFragment">
+
+    <!-- Login is the starting point -->
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="org.mountaineers.traillog.ui.auth.LoginFragment"
+        android:label="Login" />
 
     <fragment
         android:id="@+id/mapFragment"
@@ -23,4 +29,12 @@
         android:id="@+id/settingsFragment"
         android:name="org.mountaineers.traillog.ui.export.SettingsFragment"
         android:label="Settings" />
+
+    <!-- Action: Login → Map and clear back stack (so user can't go back to login) -->
+    <action
+        android:id="@+id/action_login_to_map"
+        app:destination="@id/mapFragment"
+        app:popUpTo="@id/loginFragment"
+        app:popUpToInclusive="true" />
+
 </navigation>

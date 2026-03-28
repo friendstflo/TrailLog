@@ -62,6 +62,7 @@ dependencies {
 
     // Hilt (latest stable)
     implementation("com.google.dagger:hilt-android:2.59.2")
+
     ksp("com.google.dagger:hilt-compiler:2.59.2")   // Use KSP instead of kapt for Hilt
 
     // OSMDroid (still latest as of mid-2025; no major updates visible)
@@ -75,6 +76,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-auth")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
     // Room (updated, switched to KSP for compiler)

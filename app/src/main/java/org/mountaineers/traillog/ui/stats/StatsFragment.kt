@@ -1,5 +1,6 @@
 package org.mountaineers.traillog.ui.stats
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,8 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import android.content.Context
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.data.ReportType
@@ -51,30 +50,28 @@ class StatsFragment : Fragment() {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerLandowner.adapter = adapter
 
-        // Load saved filter
         val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
-        val savedLandowner = prefs.getString("default_landowner", "All") ?: "All"
-        val position = landowners.indexOf(savedLandowner)
-        spinnerLandowner.setSelection(if (position >= 0) position else 0)
+        val saved = prefs.getString("default_landowner", "All") ?: "All"
+        spinnerLandowner.setSelection(landowners.indexOf(saved).takeIf { it >= 0 } ?: 0)
 
         spinnerLandowner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selected = landowners[position]
+                prefs.edit().putString("default_landowner", selected).apply()
                 updateStats(requireView(), TrailLogRepository.reports.value)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        // Live collect
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                TrailLogRepository.reports.collect { reports ->
+                TrailLogRepository.reports.collect { reports: List<TrailReport> ->
                     updateStats(requireView(), reports)
                 }
             }
         }
 
-        // Initial update after view is fully laid out
         view.post {
             updateStats(view, TrailLogRepository.reports.value)
         }
@@ -82,8 +79,15 @@ class StatsFragment : Fragment() {
         return view
     }
 
+    override fun onResume() {
+        super.onResume()
+        updateStats(requireView(), TrailLogRepository.reports.value)
+    }
+
     private fun updateStats(view: View, reports: List<TrailReport>) {
-        val filter = spinnerLandowner.selectedItem?.toString() ?: "All"
+        val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
+        val filter = prefs.getString("default_landowner", "All") ?: "All"
+
         val filtered = if (filter == "All") reports else reports.filter { it.landowner == filter }
 
         val total = filtered.size
@@ -97,7 +101,6 @@ class StatsFragment : Fragment() {
         view.findViewById<TextView>(R.id.tv_total).text = "Total Reports\n$total"
         view.findViewById<TextView>(R.id.tv_cleared).text = "Cleared\n$cleared"
         view.findViewById<TextView>(R.id.tv_pending).text = "Pending\n$pending"
-
         view.findViewById<TextView>(R.id.tv_logs).text = "Logs Removed\n$logsRemoved"
         view.findViewById<TextView>(R.id.tv_brush).text = "Brushing\n${brushFeet} ft"
         view.findViewById<TextView>(R.id.tv_tread).text = "Treadwork\n${treadFeet} ft"
