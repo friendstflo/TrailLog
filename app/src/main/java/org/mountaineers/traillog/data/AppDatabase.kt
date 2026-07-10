@@ -8,12 +8,14 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [TrailReport::class],
-    version = 4,
+    // Bump whenever TrailReport / converters change. Without a bump, Room throws
+    // IllegalStateException (identity hash mismatch) even with destructive migration.
+    version = 5, // Room schema version (bump on entity/converter changes)
     exportSchema = false
 )
 @TypeConverters(
-    DateConverter::class,           // ← Add this
-    ReportTypeConverter::class      // if you already have one for ReportType
+    DateConverter::class,
+    ReportTypeConverter::class
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun trailReportDao(): TrailReportDao
@@ -29,7 +31,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "traillog_database"
                 )
-                    .fallbackToDestructiveMigration()   // Forces recreation on schema change
+                    // Dev-friendly: wipe local DB on version change (no migrations yet).
+                    // Local data is re-pulled from Firestore after login.
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance
                 instance

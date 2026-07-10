@@ -1,6 +1,5 @@
 package org.mountaineers.traillog.ui.stats
 
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,16 +9,17 @@ import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import org.mountaineers.traillog.R
-import org.mountaineers.traillog.data.ReportType
-import org.mountaineers.traillog.data.TrailLogRepository
 import org.mountaineers.traillog.data.TrailReport
 
 class StatsFragment : Fragment() {
+
+    private val viewModel: StatsViewModel by viewModels()
 
     private lateinit var spinnerLandowner: Spinner
     private lateinit var tvTotal: TextView
@@ -50,30 +50,29 @@ class StatsFragment : Fragment() {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerLandowner.adapter = adapter
 
-        val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
-        val saved = prefs.getString("default_landowner", "All") ?: "All"
+        val saved = viewModel.getLandownerFilter(requireContext())
         spinnerLandowner.setSelection(landowners.indexOf(saved).takeIf { it >= 0 } ?: 0)
 
         spinnerLandowner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selected = landowners[position]
-                prefs.edit().putString("default_landowner", selected).apply()
-                updateStats(requireView(), TrailLogRepository.reports.value)
+                viewModel.setLandownerFilter(requireContext(), selected)
+                updateStats(viewModel.reports.value)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                TrailLogRepository.reports.collect { reports: List<TrailReport> ->
-                    updateStats(requireView(), reports)
+                viewModel.reports.collect { reports: List<TrailReport> ->
+                    updateStats(reports)
                 }
             }
         }
 
         view.post {
-            updateStats(view, TrailLogRepository.reports.value)
+            updateStats(viewModel.reports.value)
         }
 
         return view
@@ -81,28 +80,18 @@ class StatsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        updateStats(requireView(), TrailLogRepository.reports.value)
+        updateStats(viewModel.reports.value)
     }
 
-    private fun updateStats(view: View, reports: List<TrailReport>) {
-        val prefs = requireContext().getSharedPreferences("traillog_prefs", Context.MODE_PRIVATE)
-        val filter = prefs.getString("default_landowner", "All") ?: "All"
+    private fun updateStats(reports: List<TrailReport>) {
+        if (!isAdded) return
+        val stats = viewModel.computeStats(requireContext(), reports)
 
-        val filtered = if (filter == "All") reports else reports.filter { it.landowner == filter }
-
-        val total = filtered.size
-        val cleared = filtered.count { it.isCleared }
-        val pending = total - cleared
-
-        val logsRemoved = filtered.filter { it.type == ReportType.LOG && it.isCleared }.size
-        val brushFeet = filtered.filter { it.type == ReportType.BRUSH && it.isCleared }.sumOf { it.quantity }
-        val treadFeet = filtered.filter { it.type == ReportType.TREADWORK && it.isCleared }.sumOf { it.quantity }
-
-        view.findViewById<TextView>(R.id.tv_total).text = "Total Reports\n$total"
-        view.findViewById<TextView>(R.id.tv_cleared).text = "Cleared\n$cleared"
-        view.findViewById<TextView>(R.id.tv_pending).text = "Pending\n$pending"
-        view.findViewById<TextView>(R.id.tv_logs).text = "Logs Removed\n$logsRemoved"
-        view.findViewById<TextView>(R.id.tv_brush).text = "Brushing\n${brushFeet} ft"
-        view.findViewById<TextView>(R.id.tv_tread).text = "Treadwork\n${treadFeet} ft"
+        tvTotal.text = getString(R.string.stats_total, stats.total)
+        tvCleared.text = getString(R.string.stats_cleared, stats.cleared)
+        tvPending.text = getString(R.string.stats_pending, stats.pending)
+        tvLogs.text = getString(R.string.stats_logs_removed, stats.logsRemoved)
+        tvBrush.text = getString(R.string.stats_brushing, stats.brushFeet)
+        tvTread.text = getString(R.string.stats_treadwork, stats.treadFeet)
     }
 }

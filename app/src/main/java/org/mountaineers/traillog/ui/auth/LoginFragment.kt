@@ -10,12 +10,15 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.Toast
+import androidx.core.content.edit
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import com.google.firebase.auth.FirebaseAuth
 import org.mountaineers.traillog.R
-import org.mountaineers.traillog.data.TrailLogRepository
 
+/**
+ * Login only — [org.mountaineers.traillog.MainActivity] AuthStateListener starts
+ * the Firestore listener and navigates to the map on successful sign-in.
+ */
 class LoginFragment : Fragment() {
 
     private lateinit var auth: FirebaseAuth
@@ -62,24 +65,18 @@ class LoginFragment : Fragment() {
 
                     if (task.isSuccessful) {
                         val user = auth.currentUser
-                        Log.d("LoginFragment", "✅ Login SUCCESS for user: ${user?.uid}")
+                        Log.d("LoginFragment", "Login SUCCESS for user: ${user?.uid}")
 
-                        // Save preferences
-                        prefs.edit()
-                            .putBoolean("remember_me", cbRememberMe.isChecked)
-                            .putString("saved_email", if (cbRememberMe.isChecked) email else "")
-                            .apply()
+                        prefs.edit {
+                            putBoolean("remember_me", cbRememberMe.isChecked)
+                            putString("saved_email", if (cbRememberMe.isChecked) email else "")
+                        }
 
-                        // Start listener
-                        TrailLogRepository.startFirebaseListener()
-
-                        // Navigate
-                        findNavController().navigate(R.id.action_login_to_map)
-
+                        // Navigation + Firebase listener owned by MainActivity AuthStateListener
                         Toast.makeText(requireContext(), "Welcome back!", Toast.LENGTH_SHORT).show()
                     } else {
                         val error = task.exception
-                        Log.e("LoginFragment", "❌ Login FAILED", error)
+                        Log.e("LoginFragment", "Login FAILED", error)
                         Toast.makeText(
                             requireContext(),
                             "Login failed: ${error?.message ?: "Unknown error"}",

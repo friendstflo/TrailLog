@@ -51,33 +51,36 @@ android {
 
 dependencies {
     // Core & UI libs (updated where newer stable exists)
-    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.13.0")
+    implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.9.7")
-    implementation("androidx.navigation:navigation-ui-ktx:2.9.7")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.9.8")
+    implementation("androidx.navigation:navigation-ui-ktx:2.9.8")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
 
     // Hilt (latest stable)
-    implementation("com.google.dagger:hilt-android:2.59.2")
+    implementation("com.google.dagger:hilt-android:2.60.1")
 
-    ksp("com.google.dagger:hilt-compiler:2.59.2")   // Use KSP instead of kapt for Hilt
+    ksp("com.google.dagger:hilt-compiler:2.60.1")   // Use KSP instead of kapt for Hilt
 
     // OSMDroid (still latest as of mid-2025; no major updates visible)
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     // Glide
-    implementation("com.github.bumptech.glide:glide:5.0.5")
+    implementation("com.github.bumptech.glide:glide:5.0.7")
     // If using annotations: ksp("com.github.bumptech.glide:ksp:5.0.5") // optional
 
     // Firebase (BOM keeps versions aligned)
-    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.16.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-auth")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
     // Room (updated, switched to KSP for compiler)
     val roomVersion = "2.8.4"   // Still latest in 2.x series; Room 3.0-alpha exists but breaking/KMP-focused
@@ -86,7 +89,7 @@ dependencies {
     ksp("androidx.room:room-compiler:$roomVersion")   // Recommended over annotationProcessor
 
     // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.11.1")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
 
     // Test libs (add if needed)
     // testImplementation("junit:junit:4.13.2")

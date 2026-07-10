@@ -5,15 +5,17 @@
     android:layout_height="match_parent">
 
     <!-- Full-screen OSMdroid Map -->
+
+    <!-- Floating action buttons container (stacked at bottom-right) -->
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_above="@id/fab_container"
+        android:layout_marginBottom="-67dp"
         android:clickable="true"
-        android:focusable="true"
-        android:layout_above="@id/fab_container" />
+        android:focusable="true" />
 
-    <!-- Floating action buttons container (stacked at bottom-right) -->
     <LinearLayout
         android:id="@+id/fab_container"
         android:layout_width="wrap_content"
@@ -36,6 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
+            android:contentDescription="@string/cd_pin_here"
             android:src="@drawable/ic_add_pin"
             app:backgroundTint="@color/primary"
             app:fabSize="mini" />
@@ -44,6 +47,7 @@
             android:id="@+id/fab_my_location"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:contentDescription="@string/cd_my_location"
             android:src="@drawable/ic_my_location"
             app:backgroundTint="@color/primary"
             app:fabSize="normal" />

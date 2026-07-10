@@ -4,12 +4,48 @@
     <string name="title_reports">Reports</string>
     <string name="title_stats">Stats</string>
     <string name="title_export">Export</string>
+
+    <!-- Settings -->
+    <string name="settings_crew_name">Crew Name</string>
+    <string name="settings_crew_name_hint">Enter your crew name</string>
+    <string name="settings_default_landowner">Default Landowner / Team Filter</string>
+    <string name="settings_save_crew">Save Crew Name</string>
     <string name="export_csv_landowner">Export CSV for Landowner</string>
+    <string name="settings_last_sync_never">Last successful sync: Never</string>
+    <string name="settings_force_sync">Force Sync Now</string>
+    <string name="settings_map_basemap">Map basemap (optional)</string>
+    <string name="settings_map_basemap_hint">OpenStreetMap or USGS Topo. Pan the map on Wi‑Fi first to cache tiles for offline use.</string>
+    <string name="basemap_updated">Map basemap: %1$s</string>
+    <string name="last_synced_minutes">Last synced: %1$d min ago (%2$d reports)</string>
+    <string name="last_synced_never_count">Last synced: never (%1$d reports)</string>
+
+    <!-- Map -->
+    <string name="cd_pin_here">Drop pin at current location</string>
+    <string name="cd_my_location">Center map on my location</string>
+
+    <!-- Reports -->
+    <string name="report_landowner">Landowner: %1$s</string>
+    <string name="report_status_complete">COMPLETE</string>
+    <string name="report_quantity_inches">%1$d inches</string>
+    <string name="report_quantity_feet">%1$d ft</string>
+
+    <!-- Stats -->
+    <string name="stats_total">Total Reports\n%1$d</string>
+    <string name="stats_cleared">Cleared\n%1$d</string>
+    <string name="stats_pending">Pending\n%1$d</string>
+    <string name="stats_logs_removed">Logs Removed\n%1$d</string>
+    <string name="stats_brushing">Brushing\n%1$d ft</string>
+    <string name="stats_treadwork">Treadwork\n%1$d ft</string>
 
     <string-array name="report_types">
         <item>Log</item>
         <item>Brush</item>
         <item>Treadwork</item>
         <item>Other</item>
+    </string-array>
+
+    <string-array name="map_basemaps">
+        <item>OpenStreetMap</item>
+        <item>USGS Topo</item>
     </string-array>
 </resources>

@@ -15,7 +15,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -23,11 +25,10 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.data.ReportType
-import org.mountaineers.traillog.data.TrailLogRepository
 import org.mountaineers.traillog.data.TrailReport
-import org.osmdroid.config.Configuration
+import org.mountaineers.traillog.map.MapBasemapPreferences
+import org.mountaineers.traillog.map.OsmdroidConfig
 import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
@@ -38,6 +39,8 @@ import java.util.Date
 import java.util.Locale
 
 class MapFragment : Fragment() {
+
+    private val viewModel: MapViewModel by viewModels()
 
     private var map: MapView? = null
     private lateinit var locationManager: LocationManager
@@ -75,9 +78,7 @@ class MapFragment : Fragment() {
                 isCleared = false
             )
 
-            lifecycleScope.launch {
-                TrailLogRepository.addReport(newReport, photoFile)
-            }
+            viewModel.addReport(newReport, photoFile)
             view?.postDelayed({ refreshAllMarkers() }, 300)
             Toast.makeText(requireContext(), "Pin added successfully", Toast.LENGTH_SHORT).show()
         } else {
@@ -125,9 +126,9 @@ class MapFragment : Fragment() {
             }, 300)
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                TrailLogRepository.reports.collect {
+                viewModel.reports.collect {
                     refreshAllMarkers()
                 }
             }
@@ -138,17 +139,43 @@ class MapFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        applySelectedBasemap()
         setupLongPress()
         setupMyLocationButton(requireView())
         centerMapOnStartup()
         refreshAllMarkers()
+        map?.onResume()
+    }
+
+    override fun onPause() {
+        map?.onPause()
+        super.onPause()
     }
 
     private fun setupMapBasic() {
-        Configuration.getInstance().userAgentValue = "org.mountaineers.traillog"
-        map?.setTileSource(TileSourceFactory.MAPNIK)
+        OsmdroidConfig.ensureConfigured(requireContext())
         map?.setMultiTouchControls(true)
+        map?.isTilesScaledToDpi = true
+        // Allow network downloads so panned areas are cached for offline use later
+        map?.setUseDataConnection(true)
+        applySelectedBasemap()
         map?.controller?.setZoom(14.0)
+    }
+
+    /** Applies OpenStreetMap or USGS Topo from Settings; tiles cache to disk automatically. */
+    private fun applySelectedBasemap() {
+        val basemap = MapBasemapPreferences.get(requireContext())
+        val source = MapBasemapPreferences.tileSource(basemap)
+        map?.setTileSource(source)
+        map?.maxZoomLevel = MapBasemapPreferences.maxZoom(basemap)
+        map?.minZoomLevel = 3.0
+        // Clamp current zoom if switching to USGS (max 16)
+        val currentZoom = map?.zoomLevelDouble ?: 14.0
+        val maxZ = MapBasemapPreferences.maxZoom(basemap)
+        if (currentZoom > maxZ) {
+            map?.controller?.setZoom(maxZ)
+        }
+        map?.invalidate()
     }
 
     private fun centerMapOnStartup() {
@@ -178,7 +205,7 @@ class MapFragment : Fragment() {
             } else {
                 centerOnDefaultLocation()
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             centerOnDefaultLocation()
         }
     }
@@ -194,14 +221,7 @@ class MapFragment : Fragment() {
             m.overlays.clear()
             setupLongPress()
 
-            val filter = TrailLogRepository.getCurrentLandownerFilter(requireContext())
-
-            val filteredReports = if (filter == "All") {
-                TrailLogRepository.reports.value
-            } else {
-                TrailLogRepository.reports.value.filter { it.landowner == filter }
-            }
-
+            val filteredReports = viewModel.filteredReports(requireContext())
             filteredReports.forEach { addMarker(it, m) }
             m.invalidate()
         } ?: run {
@@ -216,11 +236,12 @@ class MapFragment : Fragment() {
             snippet = report.description
             relatedObject = report
 
-            icon = if (report.isCleared) {
-                resources.getDrawable(android.R.drawable.checkbox_on_background, null)
+            val iconRes = if (report.isCleared) {
+                android.R.drawable.checkbox_on_background
             } else {
-                resources.getDrawable(android.R.drawable.ic_menu_myplaces, null)
+                android.R.drawable.ic_menu_myplaces
             }
+            icon = ResourcesCompat.getDrawable(resources, iconRes, null)
 
             setInfoWindow(CustomInfoWindow(mapView,
                 onEdit = { showEditDialog(it) },
@@ -291,7 +312,7 @@ class MapFragment : Fragment() {
     }
 
     private fun showLandownerDialog(lat: Double, lon: Double, type: ReportType, severity: String) {
-        val currentFilter = TrailLogRepository.getCurrentLandownerFilter(requireContext())
+        val currentFilter = viewModel.getLandownerFilter(requireContext())
         val defaultIndex = if (currentFilter != "All") landowners.indexOf(currentFilter) else 3
 
         AlertDialog.Builder(requireContext())
@@ -349,9 +370,7 @@ class MapFragment : Fragment() {
 
     private fun toggleCompleted(report: TrailReport) {
         val updated = report.copy(isCleared = !report.isCleared)
-        lifecycleScope.launch {
-            TrailLogRepository.updateReport(updated)
-        }
+        viewModel.updateReport(updated)
         refreshAllMarkers()
 
         val message = if (updated.isCleared) "Marked as Completed ✓" else "Re-opened"
@@ -379,10 +398,7 @@ class MapFragment : Fragment() {
                     quantity = newQuantity
                 )
 
-                lifecycleScope.launch {
-                    TrailLogRepository.updateReport(updatedReport)
-                }
-
+                viewModel.updateReport(updatedReport)
                 refreshAllMarkers()
                 Toast.makeText(requireContext(), "Report updated", Toast.LENGTH_SHORT).show()
             }
@@ -393,13 +409,15 @@ class MapFragment : Fragment() {
     private fun showDeleteConfirmation(report: TrailReport) {
         AlertDialog.Builder(requireContext())
             .setTitle("Delete Report?")
-            .setMessage("This will permanently remove the pin and photo.\n\nAre you sure?")
+            .setMessage("This will permanently remove the pin, photo, and all data.\n\nAre you sure?")
             .setPositiveButton("Delete") { _, _ ->
-                if (report.photoPath.isNotEmpty()) File(report.photoPath).delete()
-
-                lifecycleScope.launch {
-                    TrailLogRepository.deleteReport(report.id)
+                if (report.photoPath.isNotEmpty()) {
+                    // Delete local file only if path is a local filesystem path
+                    val local = File(report.photoPath)
+                    if (local.exists()) local.delete()
                 }
+
+                viewModel.deleteReport(report.id)
 
                 map?.overlays?.forEach { overlay ->
                     if (overlay is Marker && (overlay.relatedObject as? TrailReport)?.id == report.id) {
@@ -408,7 +426,7 @@ class MapFragment : Fragment() {
                 }
 
                 refreshAllMarkers()
-                Toast.makeText(requireContext(), "Report deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Report and photo deleted", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
             .show()

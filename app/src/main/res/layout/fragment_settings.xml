@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Crew Name"
+        android:text="@string/settings_crew_name"
         android:textSize="16sp"
         android:layout_marginBottom="8dp" />
 
@@ -17,18 +17,45 @@
         android:id="@+id/et_crew_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter your crew name"
+        android:hint="@string/settings_crew_name_hint"
+        android:inputType="textPersonName|textCapWords"
+        android:autofillHints="name"
+        android:importantForAutofill="yes"
         android:textSize="18sp" />
+
     <TextView
-       android:layout_width="match_parent"
-       android:layout_height="wrap_content"
-       android:text="Default Landowner / Team Filter"
-       android:textSize="16sp"
-       android:textStyle="bold"
-       android:layout_marginTop="16dp" />
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_default_landowner"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
 
     <Spinner
         android:id="@+id/spinner_landowner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" />
+
+    <!-- Optional basemap (OpenStreetMap / USGS Topo); tiles cache offline via OSMdroid -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_map_basemap"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_map_basemap_hint"
+        android:textSize="13sp"
+        android:textColor="@android:color/darker_gray"
+        android:layout_marginTop="4dp" />
+
+    <Spinner
+        android:id="@+id/spinner_map_basemap"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp" />
@@ -37,7 +64,7 @@
         android:id="@+id/btn_save_crew"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Save Crew Name"
+        android:text="@string/settings_save_crew"
         android:layout_marginTop="8dp" />
 
     <!-- Export CSV -->
@@ -45,21 +72,23 @@
         android:id="@+id/btn_export_csv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Export CSV for Landowner"
+        android:text="@string/export_csv_landowner"
         android:layout_marginTop="32dp" />
+
     <TextView
         android:id="@+id/tv_last_sync"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Last successful sync: Never"
+        android:text="@string/settings_last_sync_never"
         android:textSize="14sp"
         android:padding="16dp"
         android:textColor="@android:color/darker_gray" />
+
     <Button
         android:id="@+id/btn_force_sync"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Force Sync Now"
+        android:text="@string/settings_force_sync"
         android:textColor="#FFFFFF"
         android:backgroundTint="#1B5E20"
         android:layout_marginTop="16dp"

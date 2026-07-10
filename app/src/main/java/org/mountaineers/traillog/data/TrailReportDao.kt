@@ -13,6 +13,20 @@ interface TrailReportDao {
     @Query("SELECT * FROM reports ORDER BY timestamp DESC")
     fun getAll(): Flow<List<TrailReport>>
 
+    @Query("SELECT * FROM reports ORDER BY timestamp DESC")
+    suspend fun getAllOnce(): List<TrailReport>
+
+    @Query("SELECT * FROM reports WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): TrailReport?
+
+    /** Creates / updates waiting to upload (not soft-deleted). */
+    @Query("SELECT * FROM reports WHERE isOfflineCreated = 1 AND isInvalidated = 0")
+    suspend fun getPendingUploads(): List<TrailReport>
+
+    /** Soft-deleted rows waiting for remote delete. */
+    @Query("SELECT * FROM reports WHERE isInvalidated = 1")
+    suspend fun getPendingDeletes(): List<TrailReport>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(report: TrailReport)
 
