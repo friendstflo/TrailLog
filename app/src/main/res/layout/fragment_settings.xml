@@ -67,14 +67,6 @@
         android:text="@string/settings_save_crew"
         android:layout_marginTop="8dp" />
 
-    <!-- Export CSV -->
-    <Button
-        android:id="@+id/btn_export_csv"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/export_csv_landowner"
-        android:layout_marginTop="32dp" />
-
     <TextView
         android:id="@+id/tv_last_sync"
         android:layout_width="match_parent"

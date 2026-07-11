@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Classic teardrop map pin — tinted per severity for field legibility -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="48dp"
+    android:viewportWidth="36"
+    android:viewportHeight="48">
+    <!-- Pin body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18,0C10.3,0 4,6.3 4,14c0,10.5 14,34 14,34s14,-23.5 14,-34C32,6.3 25.7,0 18,0z" />
+    <!-- Inner circle (stays slightly darker via separate path for contrast) -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M18,8c-3.3,0 -6,2.7 -6,6s2.7,6 6,6 6,-2.7 6,-6 -2.7,-6 -6,-6z" />
+</vector>

@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.mountaineers.traillog.sync.SyncScheduler
+import org.mountaineers.traillog.util.PhotoCompressor
 import java.io.File
 import java.util.Date
 
@@ -61,6 +62,9 @@ object TrailLogRepository {
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    private val _pendingSyncCount = MutableStateFlow(0)
+    val pendingSyncCount: StateFlow<Int> = _pendingSyncCount.asStateFlow()
+
     // ==================== Initialization ====================
 
     fun initialize(context: Context) {
@@ -81,6 +85,11 @@ object TrailLogRepository {
             dao.getAll().collect { list ->
                 // Soft-deleted rows stay in Room until remote delete succeeds
                 _reports.value = list.filter { !it.isInvalidated }
+            }
+        }
+        scope.launch {
+            dao.pendingSyncCount().collect { count ->
+                _pendingSyncCount.value = count
             }
         }
     }
@@ -218,7 +227,11 @@ object TrailLogRepository {
         ensureDao()
 
         val localPath = when {
-            photoFile != null && photoFile.exists() -> photoFile.absolutePath
+            photoFile != null && photoFile.exists() -> {
+                // Compress immediately so offline storage + later upload stay small
+                PhotoCompressor.compressInPlace(photoFile)
+                photoFile.absolutePath
+            }
             else -> report.photoPath
         }
         val localReport = report.copy(
@@ -354,10 +367,18 @@ object TrailLogRepository {
             return report.copy(photoPath = "")
         }
 
+        // Always compress (or re-check size) right before Storage upload
+        val uploadFile = File(appContext.cacheDir, "upload_${report.id}.jpg")
+        val compressed = PhotoCompressor.compress(file, uploadFile)
+        val toUpload = if (compressed.exists()) compressed else file
+
         val photoRef = storage.child("photos/${report.id}.jpg")
-        photoRef.putFile(Uri.fromFile(file)).await()
+        photoRef.putFile(Uri.fromFile(toUpload)).await()
         val downloadUri = photoRef.downloadUrl.await()
-        Log.d(TAG, "Uploaded photo for ${report.id}")
+        if (uploadFile.exists() && uploadFile.absolutePath != file.absolutePath) {
+            uploadFile.delete()
+        }
+        Log.d(TAG, "Uploaded compressed photo for ${report.id}")
         return report.copy(photoPath = downloadUri.toString())
     }
 

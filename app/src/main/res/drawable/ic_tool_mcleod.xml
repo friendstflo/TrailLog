@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M18,4h4v20h-4z" />
+    <!-- Cutter edge -->
+    <path
+        android:fillColor="#607D8B"
+        android:pathData="M8,22h24v3H8z" />
+    <!-- Rake tines -->
+    <path
+        android:fillColor="#455A64"
+        android:pathData="M10,25h2v10h-2zM16,25h2v10h-2zM22,25h2v10h-2zM28,25h2v10h-2z" />
+</vector>

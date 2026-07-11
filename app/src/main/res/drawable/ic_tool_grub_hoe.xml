@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Grub hoe: long handle, metal eye/socket, long slender blade hanging down
+  (narrow rectangular face, pointed tip) — not a wide garden hoe.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <!-- Long handle -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M18.5,1h3v23h-3z" />
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M19.2,6h1.6v16h-1.6z" />
+    <!-- Metal socket / eye (angled slightly) -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M14,20 L26,20 L25,25 L15,25z" />
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M15.5,21h9v3h-9z" />
+    <!-- Long slender hanging blade -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M16.5,24.5 L16.5,35 L19.5,38.5 L20.5,38.5 L23.5,35 L23.5,24.5z" />
+    <!-- Blade face highlight -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M18.8,25.5h2.4v11h-2.4z" />
+    <!-- Pointed tip -->
+    <path
+        android:fillColor="#607D8B"
+        android:pathData="M16.5,35 L20,39.2 L23.5,35z" />
+</vector>

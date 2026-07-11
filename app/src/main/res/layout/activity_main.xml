@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Vertical stack so map/FABs are never drawn under the bottom nav. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <!-- Dark Green Top Bar -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -15,8 +16,8 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/primary"
             app:logo="@drawable/ic_mountaineers_logo"
-            app:title="TrailLog"
-            app:subtitle="Everett Lookout Committee"
+            app:title="@string/app_name"
+            app:subtitle="@string/toolbar_subtitle"
             app:titleTextColor="@android:color/white"
             app:subtitleTextColor="@android:color/white"
             app:contentInsetStart="12dp"
@@ -24,23 +25,38 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Main Content (Navigation Host) -->
-    <fragment
+    <!-- Nav host fills remaining space between toolbar and banner/nav -->
+    <androidx.fragment.app.FragmentContainerView
         android:id="@+id/nav_host_fragment"
         android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         app:defaultNavHost="true"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
         app:navGraph="@navigation/nav_graph" />
 
-    <!-- Bottom Navigation Bar -->
+    <!-- Offline / pending-sync banner (above bottom nav, full width) -->
+    <TextView
+        android:id="@+id/sync_status_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/sync_banner_offline"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@android:color/white"
+        android:visibility="gone" />
+
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
+        android:background="?attr/colorSurface"
+        app:elevation="8dp"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav_menu" />
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

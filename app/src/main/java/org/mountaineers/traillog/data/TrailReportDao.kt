@@ -27,6 +27,16 @@ interface TrailReportDao {
     @Query("SELECT * FROM reports WHERE isInvalidated = 1")
     suspend fun getPendingDeletes(): List<TrailReport>
 
+    /** Pending creates/updates + pending deletes (for sync banner). */
+    @Query(
+        """
+        SELECT
+          (SELECT COUNT(*) FROM reports WHERE isOfflineCreated = 1 AND isInvalidated = 0) +
+          (SELECT COUNT(*) FROM reports WHERE isInvalidated = 1)
+        """
+    )
+    fun pendingSyncCount(): Flow<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(report: TrailReport)
 

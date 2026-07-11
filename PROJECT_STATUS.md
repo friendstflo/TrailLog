@@ -49,9 +49,16 @@ Credit and maintenance of the app should be attributed to:
 | ViewModels                 | ✅ Implemented  | Map / Reports / Stats / Settings |
 | Photo Deletion from Storage| ✅ Fixed        | Via pending soft-delete + sync |
 | WorkManager background sync| ✅ Implemented  | Immediate on write + 15 min periodic |
+| Photo compression          | ✅ Implemented  | Max edge 1600px JPEG ~78% before upload |
+| Offline / pending banner   | ✅ Implemented  | MainActivity; tap to force sync when online |
+| Trail presets (land mgr)   | ✅ Implemented  | Snohomish / Darrington / Gifford-Pinchot |
+| Severity-colored map pins  | ✅ Implemented  | Teardrop pins (low/med/high/complete) |
+| Cache this map area        | ✅ Implemented  | FAB + OSMdroid CacheManager |
+| Material 3 / dynamic color | ✅ Implemented  | DynamicColors + M3 theme; Compose Stats |
+| Compose Stats              | ✅ Implemented  | First Compose screen (Material 3) |
 
 **Overall Assessment**  
-Local-first optimistic UI + WorkManager background sync + Firestore disk cache are in place. Next: photo compression, conflict polish.
+Field-ready offline stack with compression, sync visibility, and land-manager map presets.
 
 ---
 

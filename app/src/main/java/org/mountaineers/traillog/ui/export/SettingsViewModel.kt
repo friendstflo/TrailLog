@@ -42,11 +42,6 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
-    fun filteredReports(context: Context, filter: String): List<TrailReport> {
-        val all = reports.value
-        return if (filter == "All") all else all.filter { it.landowner == filter }
-    }
-
     val isSyncing = TrailLogRepository.isSyncing
 
     fun sync(onResult: (Boolean, String?) -> Unit = { _, _ -> }) {

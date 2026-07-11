@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Weed / grass whip: long handle with top grip, wide double-edged
+  serrated blade mounted at the bottom (manual grass cutter).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <!-- Shaft -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M18.5,6h3v22h-3z" />
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M19.2,10h1.6v16h-1.6z" />
+    <!-- T-grip / handle top -->
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M11,2h18v5H11z" />
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M13,3.2h14v2.6H13z" />
+    <!-- Ferrule -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M16,26h8v3.5h-8z" />
+    <!-- Blade body (wide diamond / leaf shape) -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M5,30.5 L20,28 L35,30.5 L35,33.5 L20,36 L5,33.5z" />
+    <!-- Center spine -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M8,31.2 L20,29.5 L32,31.2 L32,33 L20,34.5 L8,33z" />
+    <!-- Top serrations -->
+    <path
+        android:fillColor="#607D8B"
+        android:pathData="M7,30.5 L9,28.8 L11,30.5 L13,28.8 L15,30.5 L17,28.8 L19,30.5 L21,28.8 L23,30.5 L25,28.8 L27,30.5 L29,28.8 L31,30.5 L33,28.8 L34,30.5 L34,31.3 L6,31.3z" />
+    <!-- Bottom serrations -->
+    <path
+        android:fillColor="#455A64"
+        android:pathData="M7,33.5 L9,35.2 L11,33.5 L13,35.2 L15,33.5 L17,35.2 L19,33.5 L21,35.2 L23,33.5 L25,35.2 L27,33.5 L29,35.2 L31,33.5 L33,35.2 L34,33.5 L34,32.7 L6,32.7z" />
+    <!-- Mounting bolt hint -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M18.5,29.5h3v2h-3z" />
+</vector>

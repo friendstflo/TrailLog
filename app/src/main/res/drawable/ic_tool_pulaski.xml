@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pulaski: long wood handle through a steel head —
+  axe bit on one side, adze (hoe) bit on the other.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <!-- Handle (extends through head) -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M18.2,10h3.6v28h-3.6z" />
+    <!-- Handle wood grain highlight -->
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M19.2,18h1.6v18h-1.6z" />
+    <!-- Steel head body -->
+    <path
+        android:fillColor="#607D8B"
+        android:pathData="M13,7h14v9H13z" />
+    <!-- Axe cheek / blade left (flared) -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M13,8 L3,10.5 L3,12.5 L13,15z" />
+    <!-- Axe edge shine -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M3,10.5 L13,8.5 L13,10 L3,11.5z" />
+    <!-- Adze blade right (horizontal pick/hoe) -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M27,8.5h11v6H27z" />
+    <!-- Adze tip -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M35,8.5h4v6h-4z" />
+    <!-- Head top -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M15,5h10v3H15z" />
+    <!-- Eye ring around handle -->
+    <path
+        android:fillColor="#455A64"
+        android:pathData="M17,9h6v5h-6z" />
+</vector>
