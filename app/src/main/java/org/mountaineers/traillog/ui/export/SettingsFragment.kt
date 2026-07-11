@@ -1,7 +1,6 @@
 package org.mountaineers.traillog.ui.export
 
 import android.os.Bundle
-import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,17 +16,11 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.map.MapBasemap
-import java.io.File
-import java.io.FileWriter
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 class SettingsFragment : Fragment() {
 
@@ -37,7 +30,6 @@ class SettingsFragment : Fragment() {
     private lateinit var tvLastSync: TextView
     private lateinit var spinnerLandowner: Spinner
     private lateinit var spinnerMapBasemap: Spinner
-    private lateinit var btnExport: Button
 
     private val landowners = listOf("All", "Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
 
@@ -55,7 +47,6 @@ class SettingsFragment : Fragment() {
         tvLastSync = view.findViewById(R.id.tv_last_sync)
         spinnerLandowner = view.findViewById(R.id.spinner_landowner)
         spinnerMapBasemap = view.findViewById(R.id.spinner_map_basemap)
-        btnExport = view.findViewById(R.id.btn_export_csv)
 
         etCrewName.setText(viewModel.getCrewName(requireContext()))
 
@@ -78,7 +69,6 @@ class SettingsFragment : Fragment() {
 
         setupBasemapSpinner()
 
-        // Live sync status from Room-backed flows
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(viewModel.lastSyncTime, viewModel.reports) { lastSync, reports ->
@@ -94,8 +84,6 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        // Tap last-sync row area isn't a button; export + crew name + landowner remain primary.
-        // Long-press last sync text forces a sync.
         tvLastSync.setOnLongClickListener {
             viewModel.sync { ok, error ->
                 if (ok) {
@@ -105,10 +93,6 @@ class SettingsFragment : Fragment() {
                 }
             }
             true
-        }
-
-        btnExport.setOnClickListener {
-            exportToCSV()
         }
 
         etCrewName.setOnFocusChangeListener { _, hasFocus ->
@@ -163,53 +147,6 @@ class SettingsFragment : Fragment() {
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
-    private fun exportToCSV() {
-        val filter = spinnerLandowner.selectedItem?.toString() ?: "All"
-        val filteredReports = viewModel.filteredReports(requireContext(), filter)
-
-        if (filteredReports.isEmpty()) {
-            Toast.makeText(requireContext(), "No reports to export", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date())
-                val fileName = "TrailLog_${filter.replace(" ", "_")}_$timestamp.csv"
-
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, fileName)
-
-                FileWriter(file).use { writer ->
-                    writer.append("Date,Landowner,Type,Description,Quantity,Unit,Severity,Status,Reporter,Photo Path\n")
-
-                    filteredReports.forEach { report ->
-                        val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(report.timestamp)
-                        val unit = if (report.type == org.mountaineers.traillog.data.ReportType.LOG) "inches" else "ft"
-                        val status = if (report.isCleared) "Complete" else "Pending"
-
-                        writer.append("\"$dateStr\",\"${report.landowner}\",\"${report.type.displayName}\",")
-                            .append("\"${report.description.replace("\"", "\"\"")}\",")
-                            .append("${report.quantity},\"$unit\",\"${report.severity}\",")
-                            .append("\"$status\",\"${report.reporter}\",\"${report.photoPath}\"\n")
-                    }
-                }
-
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        requireContext(),
-                        "✅ CSV exported!\nSaved to Downloads/$fileName",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
         }
     }
 }

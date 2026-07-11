@@ -15,7 +15,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -25,9 +24,14 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 import org.mountaineers.traillog.R
 import org.mountaineers.traillog.data.ReportType
+import org.mountaineers.traillog.data.TrailLogRepository
 import org.mountaineers.traillog.data.TrailReport
+import org.mountaineers.traillog.map.MapAreaCacheHelper
 import org.mountaineers.traillog.map.MapBasemapPreferences
+import org.mountaineers.traillog.map.MapPinIcons
 import org.mountaineers.traillog.map.OsmdroidConfig
+import org.mountaineers.traillog.map.TrailPreset
+import org.mountaineers.traillog.map.TrailPresets
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -52,6 +56,8 @@ class MapFragment : Fragment() {
     private var pendingQuantity = 0
     private var pendingLandowner = "Snohomish County"
     private var photoFile: File? = null
+    /** Avoid re-centering every onResume (preserves pan/zoom + preset jumps). */
+    private var didInitialCenter = false
 
     private val landowners = listOf("All", "Darrington RD", "Gifford-Pinchot RD", "Snohomish County", "Other")
 
@@ -126,6 +132,19 @@ class MapFragment : Fragment() {
             }, 300)
         }
 
+        view.findViewById<FloatingActionButton>(R.id.fab_trail_preset)?.setOnClickListener {
+            showTrailPresetPicker()
+        }
+
+        view.findViewById<FloatingActionButton>(R.id.fab_cache_area)?.setOnClickListener {
+            val m = map
+            if (m != null) {
+                MapAreaCacheHelper.cacheVisibleArea(requireContext(), m, zoomLevelsBelow = 2)
+            } else {
+                Toast.makeText(requireContext(), R.string.cache_need_network, Toast.LENGTH_SHORT).show()
+            }
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.reports.collect {
@@ -142,7 +161,10 @@ class MapFragment : Fragment() {
         applySelectedBasemap()
         setupLongPress()
         setupMyLocationButton(requireView())
-        centerMapOnStartup()
+        if (!didInitialCenter) {
+            centerMapOnStartup()
+            didInitialCenter = true
+        }
         refreshAllMarkers()
         map?.onResume()
     }
@@ -179,12 +201,27 @@ class MapFragment : Fragment() {
     }
 
     private fun centerMapOnStartup() {
+        // Prefer land-manager preset from Settings filter when no fresh GPS fix is available
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-            == PackageManager.PERMISSION_GRANTED) {
-            centerOnUserLocation()
-        } else {
-            centerOnDefaultLocation()
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            try {
+                if (!::locationManager.isInitialized) {
+                    locationManager =
+                        requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                }
+                val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                    ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                if (location != null) {
+                    map?.controller?.setCenter(GeoPoint(location.latitude, location.longitude))
+                    map?.controller?.setZoom(16.0)
+                    return
+                }
+            } catch (_: Exception) {
+                // fall through to preset
+            }
         }
+        centerOnLandManagerOrFallback()
     }
 
     private fun centerOnUserLocation() {
@@ -203,17 +240,53 @@ class MapFragment : Fragment() {
                 map?.controller?.setCenter(point)
                 map?.controller?.setZoom(19.0)
             } else {
-                centerOnDefaultLocation()
+                centerOnLandManagerOrFallback()
             }
         } catch (_: Exception) {
-            centerOnDefaultLocation()
+            centerOnLandManagerOrFallback()
         }
     }
 
-    private fun centerOnDefaultLocation() {
-        val defaultPoint = GeoPoint(48.17, -121.69)
-        map?.controller?.setCenter(defaultPoint)
-        map?.controller?.setZoom(14.0)
+    private fun centerOnLandManagerOrFallback() {
+        val filter = viewModel.getLandownerFilter(requireContext())
+        val preset = TrailPresets.forLandowner(filter) ?: TrailPresets.FALLBACK
+        applyTrailPreset(preset, animate = false)
+    }
+
+    private fun showTrailPresetPicker() {
+        val presets = TrailPresets.all
+        val labels = presets.map { it.displayName }.toTypedArray()
+        val filter = viewModel.getLandownerFilter(requireContext())
+        val checked = presets.indexOfFirst { it.landowner == filter }.coerceAtLeast(0)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.trail_preset_title)
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                val preset = presets[which]
+                // Align landowner filter with selected trail area
+                TrailLogRepository.setCurrentLandowner(requireContext(), preset.landowner)
+                applyTrailPreset(preset, animate = true)
+                refreshAllMarkers()
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.trail_preset_jumped, preset.displayName),
+                    Toast.LENGTH_SHORT
+                ).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyTrailPreset(preset: TrailPreset, animate: Boolean) {
+        val point = preset.geoPoint
+        val zoom = preset.zoom.coerceAtMost(map?.maxZoomLevel ?: preset.zoom)
+        if (animate) {
+            map?.controller?.animateTo(point, zoom, 900L)
+        } else {
+            map?.controller?.setCenter(point)
+            map?.controller?.setZoom(zoom)
+        }
     }
 
     private fun refreshAllMarkers() {
@@ -233,15 +306,16 @@ class MapFragment : Fragment() {
         val marker = Marker(mapView).apply {
             position = GeoPoint(report.lat, report.lng)
             title = report.type.displayName
-            snippet = report.description
+            snippet = buildString {
+                append(report.severity)
+                if (report.isCleared) append(" · Complete")
+                if (report.description.isNotBlank()) append("\n").append(report.description)
+            }
             relatedObject = report
 
-            val iconRes = if (report.isCleared) {
-                android.R.drawable.checkbox_on_background
-            } else {
-                android.R.drawable.ic_menu_myplaces
-            }
-            icon = ResourcesCompat.getDrawable(resources, iconRes, null)
+            // Teardrop pin: amber / orange / red by severity, green when complete
+            icon = MapPinIcons.forReport(requireContext(), report)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
 
             setInfoWindow(CustomInfoWindow(mapView,
                 onEdit = { showEditDialog(it) },

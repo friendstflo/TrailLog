@@ -1,26 +1,25 @@
 plugins {
     id("com.android.application")
+    // AGP 9 includes built-in Kotlin — do not apply org.jetbrains.kotlin.android
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.gms.google-services")
-    // Add this if using KSP (recommended for Room/Hilt):
-    id("com.google.devtools.ksp") version "2.3.6" // adjust to match your Kotlin version
+    id("com.google.devtools.ksp") version "2.3.6"
 }
 
 android {
     namespace = "org.mountaineers.traillog"
-    compileSdk = 36   // Updated to latest (Android 16)
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "org.mountaineers.traillog"
         minSdk = 24
-        targetSdk = 36   // Updated — aligns with compileSdk, better for Play Store compliance
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // If using Compose later, add:
-        // vectorDrawables.useSupportLibrary = true
+        vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
@@ -35,24 +34,16 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // If you plan to migrate to Jetpack Compose, enable it here:
-    // buildFeatures {
-    //     compose = true
-    // }
-    // composeOptions {
-    //     kotlinCompilerExtensionVersion = "1.5.17"  // or latest matching Kotlin
-    // }
-
-    // If still using view binding (XML), keep; otherwise remove
     buildFeatures {
         viewBinding = true
+        compose = true
     }
 }
 
 dependencies {
-    // Core & UI libs (updated where newer stable exists)
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
@@ -62,37 +53,47 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.8.9")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.activity:activity-compose:1.12.2")
 
-    // Hilt (latest stable)
+    // Compose (Material 3 + dynamic color) — pin Android artifacts for AGP 9 resolution
+    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.ui:ui-unit")
+    implementation("androidx.compose.ui:ui-text")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.foundation:foundation-layout")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.runtime:runtime")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Hilt
     implementation("com.google.dagger:hilt-android:2.60.1")
+    ksp("com.google.dagger:hilt-compiler:2.60.1")
 
-    ksp("com.google.dagger:hilt-compiler:2.60.1")   // Use KSP instead of kapt for Hilt
-
-    // OSMDroid (still latest as of mid-2025; no major updates visible)
+    // OSMDroid
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     // Glide
     implementation("com.github.bumptech.glide:glide:5.0.7")
-    // If using annotations: ksp("com.github.bumptech.glide:ksp:5.0.5") // optional
 
-    // Firebase (BOM keeps versions aligned)
+    // Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.16.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-auth")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
-    // Room (updated, switched to KSP for compiler)
-    val roomVersion = "2.8.4"   // Still latest in 2.x series; Room 3.0-alpha exists but breaking/KMP-focused
+    // Room
+    val roomVersion = "2.8.4"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")   // Recommended over annotationProcessor
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.11.2")
-
-    // Test libs (add if needed)
-    // testImplementation("junit:junit:4.13.2")
-    // androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    // androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }

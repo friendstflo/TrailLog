@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
+    <!--
+      Material 3 base theme. Dynamic color is applied at runtime via
+      DynamicColors.applyToActivitiesIfAvailable (API 31+).
+    -->
     <style name="Theme.TrailLog" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary</item>
         <item name="colorOnPrimary">@android:color/white</item>
-        <item name="colorAccent">@color/accent</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+        <item name="colorSecondaryContainer">@color/secondary_container</item>
+        <item name="colorTertiary">@color/sync_banner_syncing</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

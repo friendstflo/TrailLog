@@ -26,9 +26,14 @@
         android:label="@string/title_stats" />
 
     <fragment
+        android:id="@+id/toolsFragment"
+        android:name="org.mountaineers.traillog.ui.tools.ToolsFragment"
+        android:label="@string/title_tools" />
+
+    <fragment
         android:id="@+id/settingsFragment"
         android:name="org.mountaineers.traillog.ui.export.SettingsFragment"
-        android:label="Settings" />
+        android:label="@string/title_settings" />
 
     <!-- Action: Login → Map and clear back stack (so user can't go back to login) -->
     <action
